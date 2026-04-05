@@ -1,0 +1,14 @@
+{
+  "domain": "hybrid_ai",
+  "name": "Hybrid AI Energy Manager",
+  "codeowners": [
+    "@codex"
+  ],
+  "config_flow": true,
+  "documentation": "https://github.com/example/ha-hybrid-ai-manager",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/example/ha-hybrid-ai-manager/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

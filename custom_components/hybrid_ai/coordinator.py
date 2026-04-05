@@ -1,0 +1,116 @@
+from __future__ import annotations
+
+from datetime import timedelta
+import logging
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+
+from .adapters.registry import ADAPTERS
+from .const import (
+    ATTR_ADAPTER_ACTIONS,
+    ATTR_EXPECTED_SURPLUS_KWH,
+    ATTR_FORECAST_LOAD_KWH,
+    ATTR_FORECAST_SOLAR_KWH,
+    ATTR_PLAN_SUMMARY,
+    ATTR_TARGET_MORNING_SOC,
+    CONF_ADAPTER,
+    CONF_BATTERY_CAPACITY_KWH,
+    CONF_BATTERY_SOC_ENTITY,
+    CONF_ENABLE_WRITE_MODE,
+    CONF_EXPORT_ALLOWED,
+    CONF_GRID_POWER_ENTITY,
+    CONF_LOAD_POWER_ENTITY,
+    CONF_MAX_SOC,
+    CONF_MIN_SOC,
+    CONF_PV_POWER_ENTITY,
+    CONF_SOLAR_FORECAST_ENTITY,
+    CONF_UPDATE_INTERVAL_MINUTES,
+)
+from .forecast import SolarForecastProvider
+from .load_forecast import LoadForecaster
+from .models import EnergySnapshot, ForecastBundle
+from .optimizer import BatteryOptimizer
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class HybridAiCoordinator(DataUpdateCoordinator[dict]):
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self.entry = entry
+        self.optimizer = BatteryOptimizer()
+        self.load_forecaster = LoadForecaster(hass, entry.data[CONF_LOAD_POWER_ENTITY])
+        self.solar_forecaster = SolarForecastProvider(hass, entry.data.get(CONF_SOLAR_FORECAST_ENTITY))
+
+        adapter_cls = ADAPTERS.get(entry.data[CONF_ADAPTER], ADAPTERS["generic"])
+        self.adapter = adapter_cls(hass, entry.entry_id)
+
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"Hybrid AI {entry.title}",
+            update_interval=timedelta(
+                minutes=entry.data.get(CONF_UPDATE_INTERVAL_MINUTES, 15)
+            ),
+        )
+
+    async def _async_update_data(self) -> dict:
+        snapshot = self._read_snapshot()
+        current_load_w = self.load_forecaster.ingest_current_sample()
+        solar_kwh, solar_meta = self.solar_forecaster.get_next_24h_kwh()
+        load_kwh, overnight_kwh, forecast_confidence = self.load_forecaster.forecast_next_24h_kwh(
+            current_load_w
+        )
+
+        forecast = ForecastBundle(
+            solar_kwh_next_24h=solar_kwh,
+            load_kwh_next_24h=load_kwh,
+            load_kwh_overnight=overnight_kwh,
+            confidence=forecast_confidence,
+            source_details={"solar": solar_meta},
+        )
+
+        result = self.optimizer.optimize(
+            snapshot,
+            forecast,
+            min_soc=float(self.entry.data[CONF_MIN_SOC]),
+            max_soc=float(self.entry.data[CONF_MAX_SOC]),
+            export_allowed=bool(self.entry.data[CONF_EXPORT_ALLOWED]),
+        )
+
+        adapter_actions = await self.adapter.async_execute(
+            result.actions,
+            dry_run=not bool(self.entry.data[CONF_ENABLE_WRITE_MODE]),
+        )
+
+        return {
+            ATTR_PLAN_SUMMARY: result.summary,
+            ATTR_FORECAST_SOLAR_KWH: round(forecast.solar_kwh_next_24h, 2),
+            ATTR_FORECAST_LOAD_KWH: round(forecast.load_kwh_next_24h, 2),
+            ATTR_EXPECTED_SURPLUS_KWH: round(result.expected_surplus_kwh, 2),
+            ATTR_TARGET_MORNING_SOC: round(result.target_morning_soc, 1),
+            ATTR_ADAPTER_ACTIONS: adapter_actions,
+            "adapter": self.adapter.name,
+            "dry_run": not bool(self.entry.data[CONF_ENABLE_WRITE_MODE]),
+            "forecast_confidence": round(forecast.confidence, 2),
+            "snapshot": snapshot.__dict__,
+        }
+
+    def _read_float_state(self, entity_id: str) -> float:
+        state = self.hass.states.get(entity_id)
+        if state is None:
+            return 0.0
+        try:
+            return float(state.state)
+        except ValueError:
+            return 0.0
+
+    def _read_snapshot(self) -> EnergySnapshot:
+        return EnergySnapshot(
+            battery_soc=self._read_float_state(self.entry.data[CONF_BATTERY_SOC_ENTITY]),
+            battery_capacity_kwh=float(self.entry.data[CONF_BATTERY_CAPACITY_KWH]),
+            load_power_w=self._read_float_state(self.entry.data[CONF_LOAD_POWER_ENTITY]),
+            pv_power_w=self._read_float_state(self.entry.data[CONF_PV_POWER_ENTITY]),
+            grid_power_w=self._read_float_state(self.entry.data[CONF_GRID_POWER_ENTITY]),
+        )

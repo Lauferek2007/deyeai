@@ -1,0 +1,3 @@
+run_optimization:
+  name: Run optimization
+  description: Refresh optimizer inputs and rebuild the battery control plan.
