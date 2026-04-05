@@ -1,6 +1,7 @@
 DOMAIN = "hybrid_ai"
 
 CONF_ADAPTER = "adapter"
+CONF_AUTO_DISCOVERY = "auto_discovery"
 CONF_BATTERY_SOC_ENTITY = "battery_soc_entity"
 CONF_BATTERY_CAPACITY_KWH = "battery_capacity_kwh"
 CONF_LOAD_POWER_ENTITY = "load_power_entity"
@@ -14,6 +15,7 @@ CONF_UPDATE_INTERVAL_MINUTES = "update_interval_minutes"
 CONF_EXPORT_ALLOWED = "export_allowed"
 
 DEFAULT_NAME = "Hybrid AI Energy Manager"
+DEFAULT_ADAPTER = "auto"
 DEFAULT_MIN_SOC = 15
 DEFAULT_MAX_SOC = 95
 DEFAULT_UPDATE_INTERVAL_MINUTES = 15
@@ -24,5 +26,7 @@ ATTR_FORECAST_LOAD_KWH = "forecast_load_kwh"
 ATTR_EXPECTED_SURPLUS_KWH = "expected_surplus_kwh"
 ATTR_TARGET_MORNING_SOC = "target_morning_soc"
 ATTR_ADAPTER_ACTIONS = "adapter_actions"
+ATTR_DISCOVERY = "discovery"
 
 SERVICE_RUN_OPTIMIZATION = "run_optimization"
+SERVICE_DISCOVER_ENTITIES = "discover_entities"

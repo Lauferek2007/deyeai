@@ -63,6 +63,22 @@ Dlatego:
 - osobne adaptery per backend lub vendor,
 - osobne bezpieczeństwo i mapowanie komend per adapter.
 
+## Autodiscovery
+
+Integracja powinna umieć pracować w trybie `auto`.
+
+To obejmuje:
+
+- wykrywanie popularnych rodzin falowników po nazwach encji i integracji,
+- próbę przypięcia encji `battery_soc`, `load_power`, `pv_power`, `grid_power`,
+- wykrywanie encji prognozy PV,
+- fallback do `generic`, jeśli nie da się pewnie wskazać vendora.
+
+W praktyce oznacza to dwa poziomy wykrywania:
+
+1. `known adapters`
+2. `unknown inverter heuristic binding`
+
 ## Tryby pracy
 
 - `dry_run`

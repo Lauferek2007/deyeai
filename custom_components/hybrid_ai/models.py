@@ -37,3 +37,16 @@ class OptimizationResult:
     should_export_overnight: bool
     summary: str
     actions: list[ControlAction] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class DiscoveryResult:
+    adapter: str
+    confidence: float
+    matched_by: str
+    battery_soc_entity: str | None = None
+    load_power_entity: str | None = None
+    pv_power_entity: str | None = None
+    grid_power_entity: str | None = None
+    solar_forecast_entity: str | None = None
+    notes: list[str] = field(default_factory=list)

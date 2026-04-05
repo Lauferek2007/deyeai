@@ -7,6 +7,7 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
     CONF_ADAPTER,
+    CONF_AUTO_DISCOVERY,
     CONF_BATTERY_CAPACITY_KWH,
     CONF_BATTERY_SOC_ENTITY,
     CONF_ENABLE_WRITE_MODE,
@@ -18,6 +19,7 @@ from .const import (
     CONF_PV_POWER_ENTITY,
     CONF_SOLAR_FORECAST_ENTITY,
     CONF_UPDATE_INTERVAL_MINUTES,
+    DEFAULT_ADAPTER,
     DEFAULT_MAX_SOC,
     DEFAULT_MIN_SOC,
     DEFAULT_NAME,
@@ -35,13 +37,14 @@ class HybridAiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_ADAPTER, default="generic"): vol.In(["generic", "solarman", "goodwe", "huawei"]),
-                vol.Required(CONF_BATTERY_SOC_ENTITY): str,
+                vol.Required(CONF_ADAPTER, default=DEFAULT_ADAPTER): vol.In(["auto", "generic", "solarman", "goodwe", "huawei"]),
+                vol.Required(CONF_AUTO_DISCOVERY, default=True): bool,
+                vol.Optional(CONF_BATTERY_SOC_ENTITY, default=""): str,
                 vol.Required(CONF_BATTERY_CAPACITY_KWH, default=10.0): vol.Coerce(float),
-                vol.Required(CONF_LOAD_POWER_ENTITY): str,
-                vol.Required(CONF_PV_POWER_ENTITY): str,
-                vol.Required(CONF_GRID_POWER_ENTITY): str,
-                vol.Optional(CONF_SOLAR_FORECAST_ENTITY): str,
+                vol.Optional(CONF_LOAD_POWER_ENTITY, default=""): str,
+                vol.Optional(CONF_PV_POWER_ENTITY, default=""): str,
+                vol.Optional(CONF_GRID_POWER_ENTITY, default=""): str,
+                vol.Optional(CONF_SOLAR_FORECAST_ENTITY, default=""): str,
                 vol.Required(CONF_MIN_SOC, default=DEFAULT_MIN_SOC): vol.Coerce(float),
                 vol.Required(CONF_MAX_SOC, default=DEFAULT_MAX_SOC): vol.Coerce(float),
                 vol.Required(CONF_EXPORT_ALLOWED, default=False): bool,

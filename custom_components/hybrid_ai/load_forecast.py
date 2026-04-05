@@ -8,12 +8,15 @@ from homeassistant.core import HomeAssistant
 class LoadForecaster:
     """Lightweight forecast based on recent and historical observations."""
 
-    def __init__(self, hass: HomeAssistant, load_entity_id: str) -> None:
+    def __init__(self, hass: HomeAssistant, load_entity_id: str | None) -> None:
         self._hass = hass
         self._load_entity_id = load_entity_id
         self._samples: deque[float] = deque(maxlen=96 * 14)
 
     def ingest_current_sample(self) -> float:
+        if not self._load_entity_id:
+            return 0.0
+
         state = self._hass.states.get(self._load_entity_id)
         if state is None:
             return 0.0

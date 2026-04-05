@@ -8,6 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
+    ATTR_DISCOVERY,
     ATTR_EXPECTED_SURPLUS_KWH,
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
@@ -61,4 +62,5 @@ class HybridAiDiagnosticSensor(CoordinatorEntity[HybridAiCoordinator], SensorEnt
             "dry_run": self.coordinator.data.get("dry_run"),
             "forecast_confidence": self.coordinator.data.get("forecast_confidence"),
             "adapter_actions": self.coordinator.data.get("adapter_actions"),
+            "discovery": self.coordinator.data.get(ATTR_DISCOVERY),
         }

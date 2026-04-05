@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import timedelta
 import logging
 
@@ -10,12 +11,14 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from .adapters.registry import ADAPTERS
 from .const import (
     ATTR_ADAPTER_ACTIONS,
+    ATTR_DISCOVERY,
     ATTR_EXPECTED_SURPLUS_KWH,
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
     ATTR_PLAN_SUMMARY,
     ATTR_TARGET_MORNING_SOC,
     CONF_ADAPTER,
+    CONF_AUTO_DISCOVERY,
     CONF_BATTERY_CAPACITY_KWH,
     CONF_BATTERY_SOC_ENTITY,
     CONF_ENABLE_WRITE_MODE,
@@ -28,6 +31,7 @@ from .const import (
     CONF_SOLAR_FORECAST_ENTITY,
     CONF_UPDATE_INTERVAL_MINUTES,
 )
+from .discovery import discover_inverter_entities, discovery_as_dict
 from .forecast import SolarForecastProvider
 from .load_forecast import LoadForecaster
 from .models import EnergySnapshot, ForecastBundle
@@ -40,10 +44,17 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.entry = entry
         self.optimizer = BatteryOptimizer()
-        self.load_forecaster = LoadForecaster(hass, entry.data[CONF_LOAD_POWER_ENTITY])
-        self.solar_forecaster = SolarForecastProvider(hass, entry.data.get(CONF_SOLAR_FORECAST_ENTITY))
+        self.discovery = self._resolve_discovery()
+        self.load_forecaster = LoadForecaster(
+            hass,
+            self._resolved_value(CONF_LOAD_POWER_ENTITY),
+        )
+        self.solar_forecaster = SolarForecastProvider(
+            hass,
+            self._resolved_value(CONF_SOLAR_FORECAST_ENTITY),
+        )
 
-        adapter_cls = ADAPTERS.get(entry.data[CONF_ADAPTER], ADAPTERS["generic"])
+        adapter_cls = ADAPTERS.get(self._resolved_adapter(), ADAPTERS["generic"])
         self.adapter = adapter_cls(hass, entry.entry_id)
 
         super().__init__(
@@ -94,8 +105,39 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
             "adapter": self.adapter.name,
             "dry_run": not bool(self.entry.data[CONF_ENABLE_WRITE_MODE]),
             "forecast_confidence": round(forecast.confidence, 2),
-            "snapshot": snapshot.__dict__,
+            "snapshot": asdict(snapshot),
+            ATTR_DISCOVERY: discovery_as_dict(self.discovery),
         }
+
+    def _resolve_discovery(self):
+        if not self.entry.data.get(CONF_AUTO_DISCOVERY, True):
+            from .models import DiscoveryResult
+
+            return DiscoveryResult(
+                adapter=self.entry.data.get(CONF_ADAPTER, "generic"),
+                confidence=1.0,
+                matched_by="manual",
+                battery_soc_entity=self.entry.data.get(CONF_BATTERY_SOC_ENTITY) or None,
+                load_power_entity=self.entry.data.get(CONF_LOAD_POWER_ENTITY) or None,
+                pv_power_entity=self.entry.data.get(CONF_PV_POWER_ENTITY) or None,
+                grid_power_entity=self.entry.data.get(CONF_GRID_POWER_ENTITY) or None,
+                solar_forecast_entity=self.entry.data.get(CONF_SOLAR_FORECAST_ENTITY) or None,
+            )
+
+        result = discover_inverter_entities(self.hass)
+        return result
+
+    def _resolved_adapter(self) -> str:
+        configured = self.entry.data.get(CONF_ADAPTER, "auto")
+        if configured == "auto" or not configured:
+            return self.discovery.adapter
+        return configured
+
+    def _resolved_value(self, key: str) -> str | None:
+        manual_value = self.entry.data.get(key)
+        if manual_value:
+            return manual_value
+        return getattr(self.discovery, key, None)
 
     def _read_float_state(self, entity_id: str) -> float:
         state = self.hass.states.get(entity_id)
@@ -108,9 +150,9 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
 
     def _read_snapshot(self) -> EnergySnapshot:
         return EnergySnapshot(
-            battery_soc=self._read_float_state(self.entry.data[CONF_BATTERY_SOC_ENTITY]),
+            battery_soc=self._read_float_state(self._resolved_value(CONF_BATTERY_SOC_ENTITY) or ""),
             battery_capacity_kwh=float(self.entry.data[CONF_BATTERY_CAPACITY_KWH]),
-            load_power_w=self._read_float_state(self.entry.data[CONF_LOAD_POWER_ENTITY]),
-            pv_power_w=self._read_float_state(self.entry.data[CONF_PV_POWER_ENTITY]),
-            grid_power_w=self._read_float_state(self.entry.data[CONF_GRID_POWER_ENTITY]),
+            load_power_w=self._read_float_state(self._resolved_value(CONF_LOAD_POWER_ENTITY) or ""),
+            pv_power_w=self._read_float_state(self._resolved_value(CONF_PV_POWER_ENTITY) or ""),
+            grid_power_w=self._read_float_state(self._resolved_value(CONF_GRID_POWER_ENTITY) or ""),
         )

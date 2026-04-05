@@ -1,3 +1,6 @@
 run_optimization:
   name: Run optimization
   description: Refresh optimizer inputs and rebuild the battery control plan.
+discover_entities:
+  name: Discover entities
+  description: Scan Home Assistant entities and infer the inverter adapter and source entities.

@@ -9,6 +9,12 @@ Projekt ma robić cztery rzeczy:
 - wyliczać optymalny plan pracy baterii,
 - wykonywać ten plan przez adapter konkretnego falownika.
 
+Dodatkowo integracja ma tryb autodiscovery:
+
+- automatyczne wykrywanie najpopularniejszych rodzin falowników,
+- heurystyczne dopinanie encji dla nieznanego falownika,
+- fallback do adaptera `generic`, gdy vendor nie zostanie wykryty jednoznacznie.
+
 To jest właściwy kształt produktu jako `custom integration`, nie tylko add-on. Add-on może pojawić się później do cięższych obliczeń, ale rdzeń musi żyć w integracji HA.
 
 ## Kluczowy scenariusz
@@ -38,4 +44,5 @@ Repo zawiera startowy szkielet:
 - config flow,
 - prosty silnik forecast + optimizer,
 - adapter registry,
+- autodiscovery adaptera i encji,
 - dokumentację produktu i roadmapę.
