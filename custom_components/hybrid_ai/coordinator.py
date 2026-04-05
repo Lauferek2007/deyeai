@@ -16,26 +16,36 @@ from .const import (
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
     ATTR_PLAN_SUMMARY,
+    ATTR_PRICE_CONTEXT,
     ATTR_TARGET_MORNING_SOC,
     CONF_ADAPTER,
     CONF_AUTO_DISCOVERY,
     CONF_BATTERY_CAPACITY_KWH,
+    CONF_BATTERY_CYCLE_COST,
     CONF_BATTERY_SOC_ENTITY,
+    CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY,
+    CONF_DEYE_LOAD_LIMIT_ENTITY,
+    CONF_DEYE_PROGRAM_1_MODE_ENTITY,
     CONF_ENABLE_WRITE_MODE,
     CONF_EXPORT_ALLOWED,
+    CONF_GRID_CHARGE_ALLOWED,
     CONF_GRID_POWER_ENTITY,
     CONF_LOAD_POWER_ENTITY,
     CONF_MAX_SOC,
     CONF_MIN_SOC,
     CONF_PV_POWER_ENTITY,
+    CONF_PRICE_EXPORT_ENTITY,
+    CONF_PRICE_IMPORT_ENTITY,
     CONF_SOLAR_FORECAST_ENTITY,
     CONF_UPDATE_INTERVAL_MINUTES,
 )
+from .deye_strategy import DeyeStrategyPlanner
 from .discovery import discover_inverter_entities, discovery_as_dict
 from .forecast import SolarForecastProvider
 from .load_forecast import LoadForecaster
 from .models import EnergySnapshot, ForecastBundle
 from .optimizer import BatteryOptimizer
+from .price_forecast import PriceForecastProvider
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,6 +54,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.entry = entry
         self.optimizer = BatteryOptimizer()
+        self.deye_strategy = DeyeStrategyPlanner()
         self.discovery = self._resolve_discovery()
         self.load_forecaster = LoadForecaster(
             hass,
@@ -52,6 +63,11 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
         self.solar_forecaster = SolarForecastProvider(
             hass,
             self._resolved_value(CONF_SOLAR_FORECAST_ENTITY),
+        )
+        self.price_forecaster = PriceForecastProvider(
+            hass,
+            self._resolved_value(CONF_PRICE_IMPORT_ENTITY),
+            self._resolved_value(CONF_PRICE_EXPORT_ENTITY),
         )
 
         adapter_cls = ADAPTERS.get(self._resolved_adapter(), ADAPTERS["generic"])
@@ -81,14 +97,27 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
             confidence=forecast_confidence,
             source_details={"solar": solar_meta},
         )
+        prices = self.price_forecaster.get_next_24h_prices()
 
-        result = self.optimizer.optimize(
-            snapshot,
-            forecast,
-            min_soc=float(self.entry.data[CONF_MIN_SOC]),
-            max_soc=float(self.entry.data[CONF_MAX_SOC]),
-            export_allowed=bool(self.entry.data[CONF_EXPORT_ALLOWED]),
-        )
+        if self.adapter.name == "deye":
+            result = self.deye_strategy.plan(
+                snapshot,
+                forecast,
+                prices,
+                min_soc=float(self.entry.data[CONF_MIN_SOC]),
+                max_soc=float(self.entry.data[CONF_MAX_SOC]),
+                export_allowed=bool(self.entry.data[CONF_EXPORT_ALLOWED]),
+                grid_charge_allowed=bool(self.entry.data[CONF_GRID_CHARGE_ALLOWED]),
+                battery_cycle_cost=float(self.entry.data[CONF_BATTERY_CYCLE_COST]),
+            )
+        else:
+            result = self.optimizer.optimize(
+                snapshot,
+                forecast,
+                min_soc=float(self.entry.data[CONF_MIN_SOC]),
+                max_soc=float(self.entry.data[CONF_MAX_SOC]),
+                export_allowed=bool(self.entry.data[CONF_EXPORT_ALLOWED]),
+            )
 
         adapter_actions = await self.adapter.async_execute(
             result.actions,
@@ -105,6 +134,13 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
             "adapter": self.adapter.name,
             "dry_run": not bool(self.entry.data[CONF_ENABLE_WRITE_MODE]),
             "forecast_confidence": round(forecast.confidence, 2),
+            ATTR_PRICE_CONTEXT: {
+                "avg_import_price": round(prices.avg_import_price, 4),
+                "avg_export_price": round(prices.avg_export_price, 4),
+                "cheapest_import_price": round(prices.cheapest_import_price, 4),
+                "highest_export_price": round(prices.highest_export_price, 4),
+                "sources": prices.source_details,
+            },
             "snapshot": asdict(snapshot),
             ATTR_DISCOVERY: discovery_as_dict(self.discovery),
         }
@@ -122,6 +158,11 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 pv_power_entity=self.entry.data.get(CONF_PV_POWER_ENTITY) or None,
                 grid_power_entity=self.entry.data.get(CONF_GRID_POWER_ENTITY) or None,
                 solar_forecast_entity=self.entry.data.get(CONF_SOLAR_FORECAST_ENTITY) or None,
+                price_import_entity=self.entry.data.get(CONF_PRICE_IMPORT_ENTITY) or None,
+                price_export_entity=self.entry.data.get(CONF_PRICE_EXPORT_ENTITY) or None,
+                deye_load_limit_entity=self.entry.data.get(CONF_DEYE_LOAD_LIMIT_ENTITY) or None,
+                deye_battery_max_charge_current_entity=self.entry.data.get(CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY) or None,
+                deye_program_1_mode_entity=self.entry.data.get(CONF_DEYE_PROGRAM_1_MODE_ENTITY) or None,
             )
 
         result = discover_inverter_entities(self.hass)

@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant, State
 from .models import DiscoveryResult
 
 ADAPTER_KEYWORDS = {
+    "deye": ["deye", "sunsynk", "solarman"],
     "huawei": ["huawei", "sun2000", "huawei_solar"],
     "goodwe": ["goodwe", "et_", "eh_", "gw"],
     "solarman": ["solarman", "deye", "sunsynk"],
@@ -18,6 +19,11 @@ ENTITY_PATTERNS = {
     "pv_power_entity": ["pv_power", "solar_power", "photovoltaic", "generation_power", "inverter_power"],
     "grid_power_entity": ["grid_power", "meter_power", "active_power_grid", "import_export", "grid_exchange"],
     "solar_forecast_entity": ["solar_forecast", "pv_forecast", "forecast_solar", "forecast_energy"],
+    "price_import_entity": ["nordpool", "import_price", "buy_price", "energy_price", "spot_price"],
+    "price_export_entity": ["export_price", "sell_price", "feed_in_tariff", "spot_sell", "nordpool_export"],
+    "deye_load_limit_entity": ["load_limit"],
+    "deye_battery_max_charge_current_entity": ["battery_max_charge_current", "max_charge_current"],
+    "deye_program_1_mode_entity": ["prog1_mode", "program_1_mode"],
 }
 
 EXCLUDE_KEYWORDS = ["daily", "monthly", "yearly", "total", "lifetime", "status", "temperature", "alarm"]
@@ -40,6 +46,8 @@ def discover_inverter_entities(hass: HomeAssistant) -> DiscoveryResult:
         notes.append("Autodiscovery found only a partial entity set; manual confirmation is recommended.")
     if adapter == "generic":
         notes.append("No popular inverter family matched strongly; using generic entity adapter.")
+    if adapter == "deye":
+        notes.append("Deye/Sunsynk style entities detected; load limit and charge-current controls will be preferred.")
 
     return DiscoveryResult(
         adapter=adapter,

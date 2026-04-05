@@ -13,6 +13,7 @@ from .const import (
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
     ATTR_PLAN_SUMMARY,
+    ATTR_PRICE_CONTEXT,
     ATTR_TARGET_MORNING_SOC,
     DOMAIN,
 )
@@ -63,4 +64,5 @@ class HybridAiDiagnosticSensor(CoordinatorEntity[HybridAiCoordinator], SensorEnt
             "forecast_confidence": self.coordinator.data.get("forecast_confidence"),
             "adapter_actions": self.coordinator.data.get("adapter_actions"),
             "discovery": self.coordinator.data.get(ATTR_DISCOVERY),
+            "price_context": self.coordinator.data.get(ATTR_PRICE_CONTEXT),
         }

@@ -15,6 +15,17 @@ Dodatkowo integracja ma tryb autodiscovery:
 - heurystyczne dopinanie encji dla nieznanego falownika,
 - fallback do adaptera `generic`, gdy vendor nie zostanie wykryty jednoznacznie.
 
+## Priorytet: Deye
+
+Aktualnie projekt jest rozwijany przede wszystkim pod `Deye/Sunsynk`.
+
+Obecny kierunek sterowania:
+
+- `load_limit` do wyboru trybu `Essentials`, `Zero Export`, `Allow Export`,
+- `battery_max_charge_current` do ograniczania lub otwierania ładowania,
+- `prog1_mode` do nocnego ładowania z sieci przy słabej prognozie PV i taniej energii,
+- logika ekonomiczna oparta o ceny importu i eksportu.
+
 To jest właściwy kształt produktu jako `custom integration`, nie tylko add-on. Add-on może pojawić się później do cięższych obliczeń, ale rdzeń musi żyć w integracji HA.
 
 ## Kluczowy scenariusz
