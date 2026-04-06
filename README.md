@@ -78,3 +78,10 @@ Repo zawiera startowy szkielet:
 - adapter registry,
 - autodiscovery adaptera i encji,
 - dokumentację produktu i roadmapę.
+
+## Lovelace card
+
+Repo zawiera też uniwersalną kartę Lovelace dla tej integracji.
+Instrukcja dodania i konfiguracji:
+
+- [docs/lovelace-card.md](C:/Users/Biuro/Documents/Playground/ha-hybrid-ai-manager/docs/lovelace-card.md)

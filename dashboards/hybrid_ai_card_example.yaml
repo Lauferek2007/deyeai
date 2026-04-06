@@ -1,0 +1,7 @@
+type: custom:hybrid-ai-card
+title: Hybrid AI
+show_tou_plan: true
+show_actions: true
+show_hourly_schedule: true
+show_price_context: true
+compact: false

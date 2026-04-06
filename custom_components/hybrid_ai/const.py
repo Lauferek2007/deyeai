@@ -1,4 +1,5 @@
 DOMAIN = "hybrid_ai"
+DATA_COORDINATORS = "coordinators"
 
 CONF_ADAPTER = "adapter"
 CONF_AUTO_DISCOVERY = "auto_discovery"
