@@ -295,7 +295,7 @@ class HybridAiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     def async_get_options_flow(config_entry):
-        return HybridAiOptionsFlow(config_entry)
+        return HybridAiOptionsFlow()
 
     async def async_step_user(self, user_input=None) -> FlowResult:
         errors: dict[str, str] = {}
@@ -315,9 +315,6 @@ class HybridAiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class HybridAiOptionsFlow(config_entries.OptionsFlow):
-    def __init__(self, config_entry) -> None:
-        self.config_entry = config_entry
-
     async def async_step_init(self, user_input=None) -> FlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
