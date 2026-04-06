@@ -15,6 +15,7 @@ from .const import (
     ATTR_EXPECTED_SURPLUS_KWH,
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
+    ATTR_LOAD_PROFILE,
     ATTR_PLAN_SUMMARY,
     ATTR_PRICE_CONTEXT,
     ATTR_TARGET_MORNING_SOC,
@@ -59,6 +60,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
         self.load_forecaster = LoadForecaster(
             hass,
             self._resolved_value(CONF_LOAD_POWER_ENTITY),
+            entry.entry_id,
         )
         self.solar_forecaster = SolarForecastProvider(
             hass,
@@ -85,6 +87,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
     async def _async_update_data(self) -> dict:
         snapshot = self._read_snapshot()
         current_load_w = self.load_forecaster.ingest_current_sample()
+        await self.load_forecaster.async_persist()
         solar_kwh, solar_meta = self.solar_forecaster.get_next_24h_kwh()
         load_kwh, overnight_kwh, forecast_confidence = self.load_forecaster.forecast_next_24h_kwh(
             current_load_w
@@ -141,9 +144,16 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 "highest_export_price": round(prices.highest_export_price, 4),
                 "sources": prices.source_details,
             },
+            ATTR_LOAD_PROFILE: self.load_forecaster.get_profile_summary(),
             "snapshot": asdict(snapshot),
             ATTR_DISCOVERY: discovery_as_dict(self.discovery),
         }
+
+    async def async_initialize(self) -> None:
+        await self.load_forecaster.async_initialize()
+
+    async def async_shutdown(self) -> None:
+        await self.load_forecaster.async_persist(force=True)
 
     def _resolve_discovery(self):
         if not self.entry.data.get(CONF_AUTO_DISCOVERY, True):

@@ -9,6 +9,13 @@ Projekt ma robić cztery rzeczy:
 - wyliczać optymalny plan pracy baterii,
 - wykonywać ten plan przez adapter konkretnego falownika.
 
+Prognoza zużycia działa automatycznie i uczy się profilu budynku bez ręcznego trenowania:
+
+- zapisuje historię zużycia per dzień tygodnia i godzina,
+- buduje osobne profile dla poniedziałku, wtorku i tak dalej,
+- po restarcie Home Assistanta zachowuje wyuczony profil,
+- łączy profil tygodniowy z ostatnimi próbkami, żeby reagować też na bieżące odchylenia.
+
 Dodatkowo integracja ma tryb autodiscovery:
 
 - automatyczne wykrywanie najpopularniejszych rodzin falowników,

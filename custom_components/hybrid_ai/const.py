@@ -36,6 +36,7 @@ ATTR_TARGET_MORNING_SOC = "target_morning_soc"
 ATTR_ADAPTER_ACTIONS = "adapter_actions"
 ATTR_DISCOVERY = "discovery"
 ATTR_PRICE_CONTEXT = "price_context"
+ATTR_LOAD_PROFILE = "load_profile"
 
 SERVICE_RUN_OPTIMIZATION = "run_optimization"
 SERVICE_DISCOVER_ENTITIES = "discover_entities"
