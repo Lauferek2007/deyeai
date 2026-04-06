@@ -121,8 +121,16 @@ class HybridAiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input=None) -> FlowResult:
+        errors: dict[str, str] = {}
         if user_input is not None:
-            return self.async_create_entry(title=DEFAULT_NAME, data=user_input)
+            try:
+                user_input[CONF_WEEKLY_LOAD_OFFSETS] = _parse_weekly_offsets(
+                    user_input.get(CONF_WEEKLY_LOAD_OFFSETS)
+                )
+            except vol.Invalid:
+                errors[CONF_WEEKLY_LOAD_OFFSETS] = "invalid_weekly_load_offsets"
+            else:
+                return self.async_create_entry(title=DEFAULT_NAME, data=user_input)
 
         schema = vol.Schema(
             {
@@ -136,7 +144,7 @@ class HybridAiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(CONF_SOLAR_FORECAST_ENTITY, default=""): str,
                 vol.Optional(CONF_PRICE_IMPORT_ENTITY, default=""): str,
                 vol.Optional(CONF_PRICE_EXPORT_ENTITY, default=""): str,
-                vol.Optional(CONF_WEEKLY_LOAD_OFFSETS, default="[]"): _parse_weekly_offsets,
+                vol.Optional(CONF_WEEKLY_LOAD_OFFSETS, default="[]"): str,
                 vol.Optional(CONF_DEYE_WORK_MODE_ENTITY, default=""): str,
                 vol.Optional(CONF_DEYE_TIME_OF_USE_ENTITY, default=""): str,
                 vol.Optional(CONF_DEYE_EXPORT_SURPLUS_ENTITY, default=""): str,
@@ -182,4 +190,4 @@ class HybridAiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_UPDATE_INTERVAL_MINUTES, default=DEFAULT_UPDATE_INTERVAL_MINUTES): vol.Coerce(int),
             }
         )
-        return self.async_show_form(step_id="user", data_schema=schema)
+        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
