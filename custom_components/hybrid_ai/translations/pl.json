@@ -1,10 +1,21 @@
 {
   "title": "Hybrid AI Energy Manager",
+  "error": {
+    "invalid_weekly_load_offsets": "Tygodniowe offsety zużycia muszą być poprawną tablicą JSON."
+  },
   "config": {
     "step": {
       "user": {
         "title": "Hybrid AI Energy Manager",
         "description": "Skonfiguruj optymalizator, źródła prognoz i encje sterujące falownika."
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ustawienia Hybrid AI",
+        "description": "Zmień ustawienia optymalizatora, prognoz i sterowania falownikiem."
       }
     }
   }

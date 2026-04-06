@@ -13,6 +13,8 @@ from .discovery import discover_inverter_entities, discovery_as_dict
 PLATFORMS = ["sensor"]
 FRONTEND_URL = f"/api/{DOMAIN}/static"
 FRONTEND_PATH = Path(__file__).parent / "frontend"
+
+
 async def async_setup(hass: HomeAssistant, config) -> bool:
     await _async_register_frontend(hass)
     return True
@@ -42,6 +44,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.async_initialize()
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][DATA_COORDINATORS][entry.entry_id] = coordinator
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     if not hass.services.has_service(DOMAIN, SERVICE_RUN_OPTIMIZATION):
 
@@ -61,6 +64,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

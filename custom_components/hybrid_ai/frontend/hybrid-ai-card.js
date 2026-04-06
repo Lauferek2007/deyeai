@@ -1,6 +1,7 @@
 const CARD_TYPE = "hybrid-ai-card";
 const DEFAULT_CONFIG = {
   title: "Hybrid AI",
+  show_settings: true,
   show_tou_plan: true,
   show_actions: true,
   show_hourly_schedule: true,
@@ -34,7 +35,7 @@ class HybridAiCard extends HTMLElement {
   }
 
   getCardSize() {
-    return this._config.compact ? 5 : 9;
+    return this._config.compact ? 6 : 10;
   }
 
   _findEntity() {
@@ -44,6 +45,7 @@ class HybridAiCard extends HTMLElement {
     if (this._config.entity) {
       return this._config.entity;
     }
+
     const preferred = Object.keys(this._hass.states).find((entityId) => {
       if (!entityId.startsWith("sensor.") || !entityId.endsWith("_plan_summary")) {
         return false;
@@ -51,9 +53,11 @@ class HybridAiCard extends HTMLElement {
       const state = this._hass.states[entityId];
       return Array.isArray(state?.attributes?.adapter_actions);
     });
+
     if (preferred) {
       return preferred;
     }
+
     return Object.keys(this._hass.states).find((entityId) => {
       const state = this._hass.states[entityId];
       return (
@@ -77,7 +81,7 @@ class HybridAiCard extends HTMLElement {
           ${this._style()}
           <div class="content">
             <div class="empty">
-              Nie znaleziono encji Hybrid AI. Ustaw entity ręcznie albo dodaj integrację.
+              No Hybrid AI entity found. Set the entity manually or add the integration first.
             </div>
           </div>
         </ha-card>
@@ -90,36 +94,38 @@ class HybridAiCard extends HTMLElement {
     const touPlan = attrs.tou_plan || [];
     const actions = attrs.adapter_actions || [];
     const prices = attrs.price_context || {};
+    const settings = attrs.settings || {};
     const activeMode = hourly[0]?.mode || "unknown";
     const nextTou = touPlan[0]
       ? `P${touPlan[0].program}: ${touPlan[0].label} ${this._hour(touPlan[0].start_hour)}-${this._hour(touPlan[0].end_hour)}`
-      : "Brak";
-    const compactClass = this._config.compact ? "compact" : "";
+      : "none";
 
     this.shadowRoot.innerHTML = `
       <ha-card header="${this._config.title}">
         ${this._style()}
-        <div class="content ${compactClass}">
-          <div class="summary">${stateObj.state || "Brak planu"}</div>
+        <div class="content ${this._config.compact ? "compact" : ""}">
+          <div class="summary">${stateObj.state || "No plan"}</div>
           <div class="topline">
             <span class="chip">Adapter: ${attrs.adapter || "unknown"}</span>
             <span class="chip ${attrs.dry_run ? "warn" : "ok"}">${attrs.dry_run ? "DRY RUN" : "WRITE MODE"}</span>
-            <span class="chip">Teraz: ${activeMode}</span>
-            <span class="chip">TOU: ${nextTou}</span>
+            <span class="chip">Active: ${activeMode}</span>
+            <span class="chip">Next TOU: ${nextTou}</span>
           </div>
 
           <div class="metrics">
             ${this._metric("PV 24h", this._formatNumber(attrs.forecast_solar_kwh, "kWh"))}
             ${this._metric("Load 24h", this._formatNumber(attrs.forecast_load_kwh, "kWh"))}
             ${this._metric("Surplus", this._formatNumber(attrs.expected_surplus_kwh, "kWh"))}
-            ${this._metric("SOC rano", this._formatNumber(attrs.target_morning_soc, "%"))}
-            ${this._metric("Pewność", this._formatPercent(attrs.forecast_confidence))}
+            ${this._metric("Morning SOC", this._formatNumber(attrs.target_morning_soc, "%"))}
+            ${this._metric("Confidence", this._formatPercent(attrs.forecast_confidence))}
           </div>
 
           <div class="actions-row">
-            <button id="refresh-btn" class="primary">Przelicz plan</button>
+            <button id="refresh-btn" class="primary">Run plan</button>
+            <button id="discover-btn" class="secondary">Autodiscovery</button>
           </div>
 
+          ${this._config.show_settings ? this._renderSettings(settings) : ""}
           ${this._config.show_price_context ? this._renderPrices(prices) : ""}
           ${this._config.show_tou_plan ? this._renderTou(touPlan) : ""}
           ${this._config.show_actions ? this._renderActions(actions) : ""}
@@ -128,21 +134,44 @@ class HybridAiCard extends HTMLElement {
       </ha-card>
     `;
 
-    const button = this.shadowRoot.getElementById("refresh-btn");
-    if (button) {
-      button.onclick = () => this._hass.callService("hybrid_ai", "run_optimization", {});
+    const refreshButton = this.shadowRoot.getElementById("refresh-btn");
+    if (refreshButton) {
+      refreshButton.onclick = () => this._hass.callService("hybrid_ai", "run_optimization", {});
     }
+
+    const discoverButton = this.shadowRoot.getElementById("discover-btn");
+    if (discoverButton) {
+      discoverButton.onclick = () => this._hass.callService("hybrid_ai", "discover_entities", {});
+    }
+  }
+
+  _renderSettings(settings) {
+    return `
+      <div class="section">
+        <div class="section-title">Active settings</div>
+        <div class="list-grid">
+          <div>Auto discovery: <strong>${settings.auto_discovery ? "on" : "off"}</strong></div>
+          <div>Write mode: <strong>${settings.enable_write_mode ? "on" : "off"}</strong></div>
+          <div>Min SOC: <strong>${this._formatNumber(settings.min_soc, "%")}</strong></div>
+          <div>Max SOC: <strong>${this._formatNumber(settings.max_soc, "%")}</strong></div>
+          <div>Export: <strong>${settings.export_allowed ? "on" : "off"}</strong></div>
+          <div>Grid charge: <strong>${settings.grid_charge_allowed ? "on" : "off"}</strong></div>
+          <div>Cycle cost: <strong>${this._formatNumber(settings.battery_cycle_cost, "")}</strong></div>
+          <div>Update interval: <strong>${this._formatNumber(settings.update_interval_minutes, "min")}</strong></div>
+        </div>
+      </div>
+    `;
   }
 
   _renderPrices(prices) {
     return `
       <div class="section">
-        <div class="section-title">Kontekst cenowy</div>
+        <div class="section-title">Price context</div>
         <div class="list-grid">
-          <div>Śr. import: <strong>${this._formatNumber(prices.avg_import_price, "")}</strong></div>
-          <div>Śr. eksport: <strong>${this._formatNumber(prices.avg_export_price, "")}</strong></div>
-          <div>Najtańszy import: <strong>${this._formatNumber(prices.cheapest_import_price, "")}</strong></div>
-          <div>Najlepszy eksport: <strong>${this._formatNumber(prices.highest_export_price, "")}</strong></div>
+          <div>Avg import: <strong>${this._formatNumber(prices.avg_import_price, "")}</strong></div>
+          <div>Avg export: <strong>${this._formatNumber(prices.avg_export_price, "")}</strong></div>
+          <div>Cheapest import: <strong>${this._formatNumber(prices.cheapest_import_price, "")}</strong></div>
+          <div>Best export: <strong>${this._formatNumber(prices.highest_export_price, "")}</strong></div>
         </div>
       </div>
     `;
@@ -158,14 +187,14 @@ class HybridAiCard extends HTMLElement {
                 <strong>${item.label}</strong>
                 <span>${this._hour(item.start_hour)}-${this._hour(item.end_hour)}</span>
               </div>
-            `
+            `,
           )
           .join("")
-      : `<div class="muted">Brak aktywnych slotów TOU.</div>`;
+      : `<div class="muted">No active TOU slots.</div>`;
 
     return `
       <div class="section">
-        <div class="section-title">Sloty TOU</div>
+        <div class="section-title">TOU slots</div>
         ${rows}
       </div>
     `;
@@ -181,14 +210,14 @@ class HybridAiCard extends HTMLElement {
                 <strong>${item.value ?? ""}</strong>
                 <span>${item.executed ? "done" : item.dry_run ? "dry-run" : "queued"}</span>
               </div>
-            `
+            `,
           )
           .join("")
-      : `<div class="muted">Brak akcji adaptera.</div>`;
+      : `<div class="muted">No adapter actions.</div>`;
 
     return `
       <div class="section">
-        <div class="section-title">Akcje adaptera</div>
+        <div class="section-title">Adapter actions</div>
         ${rows}
       </div>
     `;
@@ -206,14 +235,14 @@ class HybridAiCard extends HTMLElement {
                 <span>load ${this._formatNumber(item.expected_load_kwh, "kWh")}</span>
                 <span>pv ${this._formatNumber(item.expected_pv_kwh, "kWh")}</span>
               </div>
-            `
+            `,
           )
           .join("")
-      : `<div class="muted">Brak planu godzinowego.</div>`;
+      : `<div class="muted">No hourly plan.</div>`;
 
     return `
       <div class="section">
-        <div class="section-title">Plan godzinowy</div>
+        <div class="section-title">Hourly plan</div>
         ${rows}
       </div>
     `;
@@ -255,7 +284,12 @@ class HybridAiCard extends HTMLElement {
     if (Number.isNaN(date.getTime())) {
       return value;
     }
-    return date.toLocaleString([], { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+    return date.toLocaleString([], {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   _style() {
@@ -315,16 +349,25 @@ class HybridAiCard extends HTMLElement {
         }
         .actions-row {
           display: flex;
+          gap: 10px;
           justify-content: flex-end;
         }
-        button.primary {
-          border: 0;
+        button.primary,
+        button.secondary {
           border-radius: 12px;
           padding: 10px 14px;
           cursor: pointer;
           font: inherit;
+        }
+        button.primary {
+          border: 0;
           color: white;
           background: linear-gradient(135deg, #1d4ed8, #0f766e);
+        }
+        button.secondary {
+          border: 1px solid var(--divider-color);
+          color: var(--primary-text-color);
+          background: var(--secondary-background-color);
         }
         .section {
           display: grid;
@@ -351,7 +394,8 @@ class HybridAiCard extends HTMLElement {
         .list-row.wide {
           grid-template-columns: 110px 1fr auto auto;
         }
-        .muted {
+        .muted,
+        .empty {
           opacity: 0.72;
         }
       </style>
@@ -385,19 +429,20 @@ class HybridAiCardEditor extends HTMLElement {
     this.innerHTML = `
       <div style="display:grid;gap:12px;padding:8px 0;">
         <label>
-          <div>Tytuł</div>
+          <div>Title</div>
           <input id="title" type="text" value="${this._config?.title || ""}" style="width:100%;" />
         </label>
         <label>
-          <div>Encja główna</div>
+          <div>Main entity</div>
           <input id="entity" list="hybrid-ai-entities" type="text" value="${this._config?.entity || ""}" style="width:100%;" />
           <datalist id="hybrid-ai-entities">${entityOptions}</datalist>
         </label>
-        ${this._checkbox("show_tou_plan", "Pokaż sloty TOU")}
-        ${this._checkbox("show_actions", "Pokaż akcje adaptera")}
-        ${this._checkbox("show_hourly_schedule", "Pokaż plan godzinowy")}
-        ${this._checkbox("show_price_context", "Pokaż kontekst cenowy")}
-        ${this._checkbox("compact", "Tryb kompaktowy")}
+        ${this._checkbox("show_settings", "Show active settings")}
+        ${this._checkbox("show_tou_plan", "Show TOU slots")}
+        ${this._checkbox("show_actions", "Show adapter actions")}
+        ${this._checkbox("show_hourly_schedule", "Show hourly plan")}
+        ${this._checkbox("show_price_context", "Show price context")}
+        ${this._checkbox("compact", "Compact mode")}
       </div>
     `;
 
@@ -421,6 +466,7 @@ class HybridAiCardEditor extends HTMLElement {
       ...this._config,
       title: this.querySelector("#title")?.value || "Hybrid AI",
       entity: this.querySelector("#entity")?.value || undefined,
+      show_settings: this.querySelector("#show_settings")?.checked ?? true,
       show_tou_plan: this.querySelector("#show_tou_plan")?.checked ?? true,
       show_actions: this.querySelector("#show_actions")?.checked ?? true,
       show_hourly_schedule: this.querySelector("#show_hourly_schedule")?.checked ?? true,
@@ -441,6 +487,7 @@ class HybridAiCardEditor extends HTMLElement {
 if (!customElements.get(CARD_TYPE)) {
   customElements.define(CARD_TYPE, HybridAiCard);
 }
+
 if (!customElements.get("hybrid-ai-card-editor")) {
   customElements.define("hybrid-ai-card-editor", HybridAiCardEditor);
 }

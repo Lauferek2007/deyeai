@@ -1,10 +1,82 @@
 {
   "title": "Hybrid AI Energy Manager",
+  "error": {
+    "invalid_weekly_load_offsets": "Weekly load offsets must be a valid JSON array."
+  },
   "config": {
     "step": {
       "user": {
         "title": "Hybrid AI Energy Manager",
         "description": "Configure the optimizer, forecast inputs, and inverter control entities.",
+        "data": {
+          "adapter": "Adapter",
+          "auto_discovery": "Automatic entity discovery",
+          "battery_soc_entity": "Battery state of charge entity",
+          "battery_capacity_kwh": "Battery capacity (kWh)",
+          "load_power_entity": "Building load power entity",
+          "pv_power_entity": "PV power entity",
+          "grid_power_entity": "Grid power entity",
+          "solar_forecast_entity": "Solar forecast entity",
+          "price_import_entity": "Import price entity",
+          "price_export_entity": "Export price entity",
+          "weekly_load_offsets": "Weekly load offsets",
+          "deye_work_mode_entity": "Deye work mode entity",
+          "deye_time_of_use_entity": "Deye time-of-use entity",
+          "deye_export_surplus_entity": "Deye export surplus switch",
+          "deye_battery_grid_charging_entity": "Deye battery grid charging switch",
+          "deye_grid_charge_enabled_entity": "Deye grid charge enabled switch",
+          "deye_load_limit_entity": "Deye load limit entity",
+          "deye_solar_export_entity": "Deye solar export switch",
+          "deye_use_timer_entity": "Deye use timer switch",
+          "deye_battery_max_charge_current_entity": "Deye battery max charge current entity",
+          "deye_program_1_mode_entity": "Deye program 1 mode entity",
+          "deye_program_1_time_entity": "Deye program 1 time entity",
+          "deye_program_1_charge_entity": "Deye program 1 charging entity",
+          "deye_program_1_power_entity": "Deye program 1 power entity",
+          "deye_program_1_soc_entity": "Deye program 1 SOC entity",
+          "deye_program_2_mode_entity": "Deye program 2 mode entity",
+          "deye_program_2_time_entity": "Deye program 2 time entity",
+          "deye_program_2_charge_entity": "Deye program 2 charging entity",
+          "deye_program_2_power_entity": "Deye program 2 power entity",
+          "deye_program_2_soc_entity": "Deye program 2 SOC entity",
+          "deye_program_3_mode_entity": "Deye program 3 mode entity",
+          "deye_program_3_time_entity": "Deye program 3 time entity",
+          "deye_program_3_charge_entity": "Deye program 3 charging entity",
+          "deye_program_3_power_entity": "Deye program 3 power entity",
+          "deye_program_3_soc_entity": "Deye program 3 SOC entity",
+          "deye_program_4_time_entity": "Deye program 4 time entity",
+          "deye_program_4_charge_entity": "Deye program 4 charging entity",
+          "deye_program_4_power_entity": "Deye program 4 power entity",
+          "deye_program_4_soc_entity": "Deye program 4 SOC entity",
+          "deye_program_5_time_entity": "Deye program 5 time entity",
+          "deye_program_5_charge_entity": "Deye program 5 charging entity",
+          "deye_program_5_power_entity": "Deye program 5 power entity",
+          "deye_program_5_soc_entity": "Deye program 5 SOC entity",
+          "deye_program_6_time_entity": "Deye program 6 time entity",
+          "deye_program_6_charge_entity": "Deye program 6 charging entity",
+          "deye_program_6_power_entity": "Deye program 6 power entity",
+          "deye_program_6_soc_entity": "Deye program 6 SOC entity",
+          "min_soc": "Minimum SOC",
+          "max_soc": "Maximum SOC",
+          "export_allowed": "Allow export to grid",
+          "grid_charge_allowed": "Allow charging from grid",
+          "battery_cycle_cost": "Battery cycle cost",
+          "enable_write_mode": "Enable write mode",
+          "update_interval_minutes": "Update interval (minutes)"
+        },
+        "data_description": {
+          "adapter": "Choose auto-detection or a specific inverter backend.",
+          "weekly_load_offsets": "JSON array of recurring weekly extra load windows used as offsets for the automatic forecast.",
+          "enable_write_mode": "When enabled, the integration may send control commands to the inverter."
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Hybrid AI Settings",
+        "description": "Update optimizer, forecast, and inverter control settings.",
         "data": {
           "adapter": "Adapter",
           "auto_discovery": "Automatic entity discovery",

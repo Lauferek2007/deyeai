@@ -91,6 +91,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
+        self.config = {**entry.data, **entry.options}
         self.optimizer = BatteryOptimizer()
         self.deye_strategy = DeyeStrategyPlanner()
         self.discovery = self._resolve_discovery()
@@ -98,7 +99,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
             hass,
             self._resolved_value(CONF_LOAD_POWER_ENTITY),
             entry.entry_id,
-            [WeeklyLoadOffset(**item) for item in entry.data.get(CONF_WEEKLY_LOAD_OFFSETS, [])],
+            [WeeklyLoadOffset(**item) for item in self.config.get(CONF_WEEKLY_LOAD_OFFSETS, [])],
         )
         self.solar_forecaster = SolarForecastProvider(
             hass,
@@ -118,11 +119,12 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
             _LOGGER,
             name=f"Hybrid AI {entry.title}",
             update_interval=timedelta(
-                minutes=entry.data.get(CONF_UPDATE_INTERVAL_MINUTES, 15)
+                minutes=self.config.get(CONF_UPDATE_INTERVAL_MINUTES, 15)
             ),
         )
 
     async def _async_update_data(self) -> dict:
+        config = self.config
         snapshot = self._read_snapshot()
         current_load_w = self.load_forecaster.ingest_current_sample()
         await self.load_forecaster.async_persist()
@@ -147,24 +149,24 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 forecast,
                 prices,
                 hourly_load,
-                min_soc=float(self.entry.data[CONF_MIN_SOC]),
-                max_soc=float(self.entry.data[CONF_MAX_SOC]),
-                export_allowed=bool(self.entry.data[CONF_EXPORT_ALLOWED]),
-                grid_charge_allowed=bool(self.entry.data[CONF_GRID_CHARGE_ALLOWED]),
-                battery_cycle_cost=float(self.entry.data[CONF_BATTERY_CYCLE_COST]),
+                min_soc=float(config[CONF_MIN_SOC]),
+                max_soc=float(config[CONF_MAX_SOC]),
+                export_allowed=bool(config[CONF_EXPORT_ALLOWED]),
+                grid_charge_allowed=bool(config[CONF_GRID_CHARGE_ALLOWED]),
+                battery_cycle_cost=float(config[CONF_BATTERY_CYCLE_COST]),
             )
         else:
             result = self.optimizer.optimize(
                 snapshot,
                 forecast,
-                min_soc=float(self.entry.data[CONF_MIN_SOC]),
-                max_soc=float(self.entry.data[CONF_MAX_SOC]),
-                export_allowed=bool(self.entry.data[CONF_EXPORT_ALLOWED]),
+                min_soc=float(config[CONF_MIN_SOC]),
+                max_soc=float(config[CONF_MAX_SOC]),
+                export_allowed=bool(config[CONF_EXPORT_ALLOWED]),
             )
 
         adapter_actions = await self.adapter.async_execute(
             result.actions,
-            dry_run=not bool(self.entry.data[CONF_ENABLE_WRITE_MODE]),
+            dry_run=not bool(config[CONF_ENABLE_WRITE_MODE]),
         )
 
         return {
@@ -175,8 +177,18 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
             ATTR_TARGET_MORNING_SOC: round(result.target_morning_soc, 1),
             ATTR_ADAPTER_ACTIONS: adapter_actions,
             "adapter": self.adapter.name,
-            "dry_run": not bool(self.entry.data[CONF_ENABLE_WRITE_MODE]),
+            "dry_run": not bool(config[CONF_ENABLE_WRITE_MODE]),
             "forecast_confidence": round(forecast.confidence, 2),
+            "settings": {
+                "auto_discovery": bool(config.get(CONF_AUTO_DISCOVERY, True)),
+                "min_soc": float(config[CONF_MIN_SOC]),
+                "max_soc": float(config[CONF_MAX_SOC]),
+                "export_allowed": bool(config[CONF_EXPORT_ALLOWED]),
+                "grid_charge_allowed": bool(config[CONF_GRID_CHARGE_ALLOWED]),
+                "enable_write_mode": bool(config[CONF_ENABLE_WRITE_MODE]),
+                "update_interval_minutes": int(config[CONF_UPDATE_INTERVAL_MINUTES]),
+                "battery_cycle_cost": float(config[CONF_BATTERY_CYCLE_COST]),
+            },
             ATTR_PRICE_CONTEXT: {
                 "avg_import_price": round(prices.avg_import_price, 4),
                 "avg_export_price": round(prices.avg_export_price, 4),
@@ -226,69 +238,69 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
         await self.load_forecaster.async_persist(force=True)
 
     def _resolve_discovery(self):
-        if not self.entry.data.get(CONF_AUTO_DISCOVERY, True):
+        if not self.config.get(CONF_AUTO_DISCOVERY, True):
             from .models import DiscoveryResult
 
             return DiscoveryResult(
-                adapter=self.entry.data.get(CONF_ADAPTER, "generic"),
+                adapter=self.config.get(CONF_ADAPTER, "generic"),
                 confidence=1.0,
                 matched_by="manual",
-                battery_soc_entity=self.entry.data.get(CONF_BATTERY_SOC_ENTITY) or None,
-                load_power_entity=self.entry.data.get(CONF_LOAD_POWER_ENTITY) or None,
-                pv_power_entity=self.entry.data.get(CONF_PV_POWER_ENTITY) or None,
-                grid_power_entity=self.entry.data.get(CONF_GRID_POWER_ENTITY) or None,
-                solar_forecast_entity=self.entry.data.get(CONF_SOLAR_FORECAST_ENTITY) or None,
-                price_import_entity=self.entry.data.get(CONF_PRICE_IMPORT_ENTITY) or None,
-                price_export_entity=self.entry.data.get(CONF_PRICE_EXPORT_ENTITY) or None,
-                deye_work_mode_entity=self.entry.data.get(CONF_DEYE_WORK_MODE_ENTITY) or None,
-                deye_time_of_use_entity=self.entry.data.get(CONF_DEYE_TIME_OF_USE_ENTITY) or None,
-                deye_export_surplus_entity=self.entry.data.get(CONF_DEYE_EXPORT_SURPLUS_ENTITY) or None,
-                deye_battery_grid_charging_entity=self.entry.data.get(CONF_DEYE_BATTERY_GRID_CHARGING_ENTITY) or None,
-                deye_grid_charge_enabled_entity=self.entry.data.get(CONF_DEYE_GRID_CHARGE_ENABLED_ENTITY) or None,
-                deye_load_limit_entity=self.entry.data.get(CONF_DEYE_LOAD_LIMIT_ENTITY) or None,
-                deye_solar_export_entity=self.entry.data.get(CONF_DEYE_SOLAR_EXPORT_ENTITY) or None,
-                deye_use_timer_entity=self.entry.data.get(CONF_DEYE_USE_TIMER_ENTITY) or None,
-                deye_battery_max_charge_current_entity=self.entry.data.get(CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY) or None,
-                deye_program_1_mode_entity=self.entry.data.get(CONF_DEYE_PROGRAM_1_MODE_ENTITY) or None,
-                deye_program_1_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_1_TIME_ENTITY) or None,
-                deye_program_1_charge_entity=self.entry.data.get(CONF_DEYE_PROGRAM_1_CHARGE_ENTITY) or None,
-                deye_program_1_power_entity=self.entry.data.get(CONF_DEYE_PROGRAM_1_POWER_ENTITY) or None,
-                deye_program_1_soc_entity=self.entry.data.get(CONF_DEYE_PROGRAM_1_SOC_ENTITY) or None,
-                deye_program_2_mode_entity=self.entry.data.get(CONF_DEYE_PROGRAM_2_MODE_ENTITY) or None,
-                deye_program_2_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_2_TIME_ENTITY) or None,
-                deye_program_2_charge_entity=self.entry.data.get(CONF_DEYE_PROGRAM_2_CHARGE_ENTITY) or None,
-                deye_program_2_power_entity=self.entry.data.get(CONF_DEYE_PROGRAM_2_POWER_ENTITY) or None,
-                deye_program_2_soc_entity=self.entry.data.get(CONF_DEYE_PROGRAM_2_SOC_ENTITY) or None,
-                deye_program_3_mode_entity=self.entry.data.get(CONF_DEYE_PROGRAM_3_MODE_ENTITY) or None,
-                deye_program_3_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_3_TIME_ENTITY) or None,
-                deye_program_3_charge_entity=self.entry.data.get(CONF_DEYE_PROGRAM_3_CHARGE_ENTITY) or None,
-                deye_program_3_power_entity=self.entry.data.get(CONF_DEYE_PROGRAM_3_POWER_ENTITY) or None,
-                deye_program_3_soc_entity=self.entry.data.get(CONF_DEYE_PROGRAM_3_SOC_ENTITY) or None,
-                deye_program_4_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_4_TIME_ENTITY) or None,
-                deye_program_4_charge_entity=self.entry.data.get(CONF_DEYE_PROGRAM_4_CHARGE_ENTITY) or None,
-                deye_program_4_power_entity=self.entry.data.get(CONF_DEYE_PROGRAM_4_POWER_ENTITY) or None,
-                deye_program_4_soc_entity=self.entry.data.get(CONF_DEYE_PROGRAM_4_SOC_ENTITY) or None,
-                deye_program_5_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_5_TIME_ENTITY) or None,
-                deye_program_5_charge_entity=self.entry.data.get(CONF_DEYE_PROGRAM_5_CHARGE_ENTITY) or None,
-                deye_program_5_power_entity=self.entry.data.get(CONF_DEYE_PROGRAM_5_POWER_ENTITY) or None,
-                deye_program_5_soc_entity=self.entry.data.get(CONF_DEYE_PROGRAM_5_SOC_ENTITY) or None,
-                deye_program_6_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_6_TIME_ENTITY) or None,
-                deye_program_6_charge_entity=self.entry.data.get(CONF_DEYE_PROGRAM_6_CHARGE_ENTITY) or None,
-                deye_program_6_power_entity=self.entry.data.get(CONF_DEYE_PROGRAM_6_POWER_ENTITY) or None,
-                deye_program_6_soc_entity=self.entry.data.get(CONF_DEYE_PROGRAM_6_SOC_ENTITY) or None,
+                battery_soc_entity=self.config.get(CONF_BATTERY_SOC_ENTITY) or None,
+                load_power_entity=self.config.get(CONF_LOAD_POWER_ENTITY) or None,
+                pv_power_entity=self.config.get(CONF_PV_POWER_ENTITY) or None,
+                grid_power_entity=self.config.get(CONF_GRID_POWER_ENTITY) or None,
+                solar_forecast_entity=self.config.get(CONF_SOLAR_FORECAST_ENTITY) or None,
+                price_import_entity=self.config.get(CONF_PRICE_IMPORT_ENTITY) or None,
+                price_export_entity=self.config.get(CONF_PRICE_EXPORT_ENTITY) or None,
+                deye_work_mode_entity=self.config.get(CONF_DEYE_WORK_MODE_ENTITY) or None,
+                deye_time_of_use_entity=self.config.get(CONF_DEYE_TIME_OF_USE_ENTITY) or None,
+                deye_export_surplus_entity=self.config.get(CONF_DEYE_EXPORT_SURPLUS_ENTITY) or None,
+                deye_battery_grid_charging_entity=self.config.get(CONF_DEYE_BATTERY_GRID_CHARGING_ENTITY) or None,
+                deye_grid_charge_enabled_entity=self.config.get(CONF_DEYE_GRID_CHARGE_ENABLED_ENTITY) or None,
+                deye_load_limit_entity=self.config.get(CONF_DEYE_LOAD_LIMIT_ENTITY) or None,
+                deye_solar_export_entity=self.config.get(CONF_DEYE_SOLAR_EXPORT_ENTITY) or None,
+                deye_use_timer_entity=self.config.get(CONF_DEYE_USE_TIMER_ENTITY) or None,
+                deye_battery_max_charge_current_entity=self.config.get(CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY) or None,
+                deye_program_1_mode_entity=self.config.get(CONF_DEYE_PROGRAM_1_MODE_ENTITY) or None,
+                deye_program_1_time_entity=self.config.get(CONF_DEYE_PROGRAM_1_TIME_ENTITY) or None,
+                deye_program_1_charge_entity=self.config.get(CONF_DEYE_PROGRAM_1_CHARGE_ENTITY) or None,
+                deye_program_1_power_entity=self.config.get(CONF_DEYE_PROGRAM_1_POWER_ENTITY) or None,
+                deye_program_1_soc_entity=self.config.get(CONF_DEYE_PROGRAM_1_SOC_ENTITY) or None,
+                deye_program_2_mode_entity=self.config.get(CONF_DEYE_PROGRAM_2_MODE_ENTITY) or None,
+                deye_program_2_time_entity=self.config.get(CONF_DEYE_PROGRAM_2_TIME_ENTITY) or None,
+                deye_program_2_charge_entity=self.config.get(CONF_DEYE_PROGRAM_2_CHARGE_ENTITY) or None,
+                deye_program_2_power_entity=self.config.get(CONF_DEYE_PROGRAM_2_POWER_ENTITY) or None,
+                deye_program_2_soc_entity=self.config.get(CONF_DEYE_PROGRAM_2_SOC_ENTITY) or None,
+                deye_program_3_mode_entity=self.config.get(CONF_DEYE_PROGRAM_3_MODE_ENTITY) or None,
+                deye_program_3_time_entity=self.config.get(CONF_DEYE_PROGRAM_3_TIME_ENTITY) or None,
+                deye_program_3_charge_entity=self.config.get(CONF_DEYE_PROGRAM_3_CHARGE_ENTITY) or None,
+                deye_program_3_power_entity=self.config.get(CONF_DEYE_PROGRAM_3_POWER_ENTITY) or None,
+                deye_program_3_soc_entity=self.config.get(CONF_DEYE_PROGRAM_3_SOC_ENTITY) or None,
+                deye_program_4_time_entity=self.config.get(CONF_DEYE_PROGRAM_4_TIME_ENTITY) or None,
+                deye_program_4_charge_entity=self.config.get(CONF_DEYE_PROGRAM_4_CHARGE_ENTITY) or None,
+                deye_program_4_power_entity=self.config.get(CONF_DEYE_PROGRAM_4_POWER_ENTITY) or None,
+                deye_program_4_soc_entity=self.config.get(CONF_DEYE_PROGRAM_4_SOC_ENTITY) or None,
+                deye_program_5_time_entity=self.config.get(CONF_DEYE_PROGRAM_5_TIME_ENTITY) or None,
+                deye_program_5_charge_entity=self.config.get(CONF_DEYE_PROGRAM_5_CHARGE_ENTITY) or None,
+                deye_program_5_power_entity=self.config.get(CONF_DEYE_PROGRAM_5_POWER_ENTITY) or None,
+                deye_program_5_soc_entity=self.config.get(CONF_DEYE_PROGRAM_5_SOC_ENTITY) or None,
+                deye_program_6_time_entity=self.config.get(CONF_DEYE_PROGRAM_6_TIME_ENTITY) or None,
+                deye_program_6_charge_entity=self.config.get(CONF_DEYE_PROGRAM_6_CHARGE_ENTITY) or None,
+                deye_program_6_power_entity=self.config.get(CONF_DEYE_PROGRAM_6_POWER_ENTITY) or None,
+                deye_program_6_soc_entity=self.config.get(CONF_DEYE_PROGRAM_6_SOC_ENTITY) or None,
             )
 
         result = discover_inverter_entities(self.hass)
         return result
 
     def _resolved_adapter(self) -> str:
-        configured = self.entry.data.get(CONF_ADAPTER, "auto")
+        configured = self.config.get(CONF_ADAPTER, "auto")
         if configured == "auto" or not configured:
             return self.discovery.adapter
         return configured
 
     def _resolved_value(self, key: str) -> str | None:
-        manual_value = self.entry.data.get(key)
+        manual_value = self.config.get(key)
         if manual_value:
             return manual_value
         return getattr(self.discovery, key, None)
@@ -305,7 +317,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
     def _read_snapshot(self) -> EnergySnapshot:
         return EnergySnapshot(
             battery_soc=self._read_float_state(self._resolved_value(CONF_BATTERY_SOC_ENTITY) or ""),
-            battery_capacity_kwh=float(self.entry.data[CONF_BATTERY_CAPACITY_KWH]),
+            battery_capacity_kwh=float(self.config[CONF_BATTERY_CAPACITY_KWH]),
             load_power_w=self._read_float_state(self._resolved_value(CONF_LOAD_POWER_ENTITY) or ""),
             pv_power_w=self._read_float_state(self._resolved_value(CONF_PV_POWER_ENTITY) or ""),
             grid_power_w=self._read_float_state(self._resolved_value(CONF_GRID_POWER_ENTITY) or ""),

@@ -290,10 +290,9 @@ class DeyeAdapter(InverterAdapter):
         ]
 
     def _entity(self, key: str) -> str | None:
-        entry = self.hass.config_entries.async_get_entry(self.entry_id)
-        if entry is None:
+        if not key:
             return None
-        configured = entry.data.get(key)
+        configured = self._config_value(key)
         if configured:
             return configured
         discovered = discover_inverter_entities(self.hass)

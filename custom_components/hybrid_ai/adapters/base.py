@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from ..models import ControlAction
@@ -33,3 +34,14 @@ class InverterAdapter(ABC):
             }
             for action in actions
         ]
+
+    def _entry(self) -> ConfigEntry | None:
+        return self.hass.config_entries.async_get_entry(self.entry_id)
+
+    def _config_value(self, key: str):
+        entry = self._entry()
+        if entry is None:
+            return None
+        if key in entry.options and entry.options.get(key) not in (None, ""):
+            return entry.options.get(key)
+        return entry.data.get(key)

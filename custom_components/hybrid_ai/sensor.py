@@ -76,6 +76,7 @@ class HybridAiDiagnosticSensor(CoordinatorEntity[HybridAiCoordinator], SensorEnt
                 "forecast_load_kwh": self.coordinator.data.get(ATTR_FORECAST_LOAD_KWH),
                 "expected_surplus_kwh": self.coordinator.data.get(ATTR_EXPECTED_SURPLUS_KWH),
                 "target_morning_soc": self.coordinator.data.get(ATTR_TARGET_MORNING_SOC),
+                "settings": self.coordinator.data.get("settings"),
                 "adapter_actions": self.coordinator.data.get("adapter_actions"),
                 "discovery": self.coordinator.data.get(ATTR_DISCOVERY),
                 "price_context": self.coordinator.data.get(ATTR_PRICE_CONTEXT),
