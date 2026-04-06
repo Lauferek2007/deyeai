@@ -29,7 +29,7 @@ ENTITY_PATTERNS = {
     "deye_load_limit_entity": ["load_limit"],
     "deye_solar_export_entity": ["solar_export"],
     "deye_use_timer_entity": ["use_timer"],
-    "deye_battery_max_charge_current_entity": ["battery_max_charge_current", "max_charge_current"],
+    "deye_battery_max_charge_current_entity": ["battery_max_charge_current", "battery_max_charging_current", "max_charge_current"],
     "deye_program_1_mode_entity": ["prog1_mode", "program_1_mode"],
     "deye_program_1_time_entity": ["prog1_time", "program_1_time"],
     "deye_program_1_charge_entity": ["prog1_charge", "program_1_charge"],
@@ -236,11 +236,17 @@ def _pick_best_entity(states: list[State], patterns: list[str], adapter: str) ->
             continue
 
         score = 0
+        pattern_hits = 0
         for pattern in patterns:
             if pattern in haystack:
                 score += 10
+                pattern_hits += 1
             elif pattern.replace("_", "") in haystack.replace("_", ""):
                 score += 6
+                pattern_hits += 1
+
+        if pattern_hits == 0:
+            continue
 
         if _adapter_keyword_match(adapter, haystack):
             score += 4
@@ -265,10 +271,6 @@ def _pick_best_entity(states: list[State], patterns: list[str], adapter: str) ->
             score += 1
         if entity_id.startswith("sensor."):
             score += 1
-        if field and "program_" in field and "program_" in haystack:
-            score += 8
-        if field == "deye_battery_max_charge_current_entity" and "max_charging_current" in haystack:
-            score += 8
         if field == "deye_export_surplus_entity" and "export_surplus_power" in haystack:
             score -= 10
         if field == "deye_battery_grid_charging_entity" and "start_voltage" in haystack:
@@ -335,11 +337,15 @@ def _pick_best_price_entity(states: list[State], adapter: str, field: str) -> st
             isinstance(attrs.get(key), list) and attrs.get(key)
             for key in ("raw_today", "today", "raw_tomorrow", "tomorrow", "prices", "rates")
         )
+        has_price_unit = "/kwh" in unit or "/mwh" in unit
+        has_price_keyword = any(keyword in haystack for keyword in ("price", "spot", "tariff", "nordpool"))
+        if not has_hourly_prices and not has_price_unit and not has_price_keyword:
+            continue
         if has_hourly_prices:
             score += 20
-        if "/kwh" in unit or "/mwh" in unit:
+        if has_price_unit:
             score += 12
-        if device_class == "monetary" and "/kwh" in unit:
+        if device_class == "monetary" and has_price_unit:
             score += 8
         if "nordpool" in haystack:
             score += 12
