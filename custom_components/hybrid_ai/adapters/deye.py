@@ -2,25 +2,41 @@ from __future__ import annotations
 
 from ..const import (
     CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY,
+    CONF_DEYE_BATTERY_GRID_CHARGING_ENTITY,
+    CONF_DEYE_EXPORT_SURPLUS_ENTITY,
     CONF_DEYE_GRID_CHARGE_ENABLED_ENTITY,
     CONF_DEYE_LOAD_LIMIT_ENTITY,
-    CONF_DEYE_PROGRAM_1_CAPACITY_ENTITY,
     CONF_DEYE_PROGRAM_1_CHARGE_ENTITY,
     CONF_DEYE_PROGRAM_1_MODE_ENTITY,
     CONF_DEYE_PROGRAM_1_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_1_SOC_ENTITY,
     CONF_DEYE_PROGRAM_1_TIME_ENTITY,
-    CONF_DEYE_PROGRAM_2_CAPACITY_ENTITY,
     CONF_DEYE_PROGRAM_2_CHARGE_ENTITY,
     CONF_DEYE_PROGRAM_2_MODE_ENTITY,
     CONF_DEYE_PROGRAM_2_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_2_SOC_ENTITY,
     CONF_DEYE_PROGRAM_2_TIME_ENTITY,
-    CONF_DEYE_PROGRAM_3_CAPACITY_ENTITY,
     CONF_DEYE_PROGRAM_3_CHARGE_ENTITY,
     CONF_DEYE_PROGRAM_3_MODE_ENTITY,
     CONF_DEYE_PROGRAM_3_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_3_SOC_ENTITY,
     CONF_DEYE_PROGRAM_3_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_4_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_4_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_4_SOC_ENTITY,
+    CONF_DEYE_PROGRAM_4_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_5_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_5_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_5_SOC_ENTITY,
+    CONF_DEYE_PROGRAM_5_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_6_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_6_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_6_SOC_ENTITY,
+    CONF_DEYE_PROGRAM_6_TIME_ENTITY,
     CONF_DEYE_SOLAR_EXPORT_ENTITY,
+    CONF_DEYE_TIME_OF_USE_ENTITY,
     CONF_DEYE_USE_TIMER_ENTITY,
+    CONF_DEYE_WORK_MODE_ENTITY,
 )
 from ..discovery import discover_inverter_entities
 from ..models import ControlAction
@@ -95,14 +111,29 @@ class DeyeAdapter(InverterAdapter):
                     }
                 ]
 
+        if action.action == "deye_prepare_grid_charge_window":
+            return []
+
         if action.action == "deye_enable_system_export":
-            return self._switch_calls(CONF_DEYE_SOLAR_EXPORT_ENTITY, bool(action.value))
+            if bool(action.value):
+                return self._select_calls(CONF_DEYE_WORK_MODE_ENTITY, "Export First") or \
+                    self._switch_calls(CONF_DEYE_EXPORT_SURPLUS_ENTITY, True) or \
+                    self._switch_calls(CONF_DEYE_SOLAR_EXPORT_ENTITY, True)
+            return self._select_calls(CONF_DEYE_WORK_MODE_ENTITY, "Zero Export To Load") or \
+                self._switch_calls(CONF_DEYE_EXPORT_SURPLUS_ENTITY, False) or \
+                self._switch_calls(CONF_DEYE_SOLAR_EXPORT_ENTITY, False)
 
         if action.action == "deye_enable_use_timer":
-            return self._switch_calls(CONF_DEYE_USE_TIMER_ENTITY, bool(action.value))
+            if bool(action.value):
+                return self._select_calls(CONF_DEYE_TIME_OF_USE_ENTITY, "Week") or \
+                    self._select_calls(CONF_DEYE_TIME_OF_USE_ENTITY, "Enabled") or \
+                    self._switch_calls(CONF_DEYE_USE_TIMER_ENTITY, True)
+            return self._select_calls(CONF_DEYE_TIME_OF_USE_ENTITY, "Disabled") or \
+                self._switch_calls(CONF_DEYE_USE_TIMER_ENTITY, False)
 
         if action.action == "deye_enable_grid_charge":
-            return self._switch_calls(CONF_DEYE_GRID_CHARGE_ENABLED_ENTITY, bool(action.value))
+            return self._switch_calls(CONF_DEYE_BATTERY_GRID_CHARGING_ENTITY, bool(action.value)) or \
+                self._switch_calls(CONF_DEYE_GRID_CHARGE_ENABLED_ENTITY, bool(action.value))
 
         if action.action == "deye_apply_tou_schedule":
             calls: list[dict] = []
@@ -115,21 +146,33 @@ class DeyeAdapter(InverterAdapter):
                 1: CONF_DEYE_PROGRAM_1_TIME_ENTITY,
                 2: CONF_DEYE_PROGRAM_2_TIME_ENTITY,
                 3: CONF_DEYE_PROGRAM_3_TIME_ENTITY,
+                4: CONF_DEYE_PROGRAM_4_TIME_ENTITY,
+                5: CONF_DEYE_PROGRAM_5_TIME_ENTITY,
+                6: CONF_DEYE_PROGRAM_6_TIME_ENTITY,
             }
             charge_keys = {
                 1: CONF_DEYE_PROGRAM_1_CHARGE_ENTITY,
                 2: CONF_DEYE_PROGRAM_2_CHARGE_ENTITY,
                 3: CONF_DEYE_PROGRAM_3_CHARGE_ENTITY,
+                4: CONF_DEYE_PROGRAM_4_CHARGE_ENTITY,
+                5: CONF_DEYE_PROGRAM_5_CHARGE_ENTITY,
+                6: CONF_DEYE_PROGRAM_6_CHARGE_ENTITY,
             }
             power_keys = {
                 1: CONF_DEYE_PROGRAM_1_POWER_ENTITY,
                 2: CONF_DEYE_PROGRAM_2_POWER_ENTITY,
                 3: CONF_DEYE_PROGRAM_3_POWER_ENTITY,
+                4: CONF_DEYE_PROGRAM_4_POWER_ENTITY,
+                5: CONF_DEYE_PROGRAM_5_POWER_ENTITY,
+                6: CONF_DEYE_PROGRAM_6_POWER_ENTITY,
             }
-            capacity_keys = {
-                1: CONF_DEYE_PROGRAM_1_CAPACITY_ENTITY,
-                2: CONF_DEYE_PROGRAM_2_CAPACITY_ENTITY,
-                3: CONF_DEYE_PROGRAM_3_CAPACITY_ENTITY,
+            soc_keys = {
+                1: CONF_DEYE_PROGRAM_1_SOC_ENTITY,
+                2: CONF_DEYE_PROGRAM_2_SOC_ENTITY,
+                3: CONF_DEYE_PROGRAM_3_SOC_ENTITY,
+                4: CONF_DEYE_PROGRAM_4_SOC_ENTITY,
+                5: CONF_DEYE_PROGRAM_5_SOC_ENTITY,
+                6: CONF_DEYE_PROGRAM_6_SOC_ENTITY,
             }
             mode_options = {
                 "grid_charge": "Charge",
@@ -146,7 +189,7 @@ class DeyeAdapter(InverterAdapter):
                 "export_battery": 100,
                 "export_surplus": 100,
             }
-            capacity_values = {
+            soc_values = {
                 "grid_charge": 90,
                 "export_battery": 20,
                 "export_surplus": 15,
@@ -157,15 +200,15 @@ class DeyeAdapter(InverterAdapter):
                 time_entity = self._entity(time_keys[program])
                 charge_entity = self._entity(charge_keys[program])
                 power_entity = self._entity(power_keys[program])
-                capacity_entity = self._entity(capacity_keys[program])
+                soc_entity = self._entity(soc_keys[program])
                 if time_entity:
                     calls.append(
                         {
-                            "domain": "select",
-                            "service": "select_option",
+                            "domain": "time",
+                            "service": "set_value",
                             "data": {
                                 "entity_id": time_entity,
-                                "option": f"{int(period['start_hour']):02d}:00",
+                                "time": f"{int(period['start_hour']):02d}:00",
                             },
                         }
                     )
@@ -202,14 +245,14 @@ class DeyeAdapter(InverterAdapter):
                             },
                         }
                     )
-                if capacity_entity:
+                if soc_entity:
                     calls.append(
                         {
                             "domain": "number",
                             "service": "set_value",
                             "data": {
-                                "entity_id": capacity_entity,
-                                "value": capacity_values.get(period["mode"], 20),
+                                "entity_id": soc_entity,
+                                "value": soc_values.get(period["mode"], 20),
                             },
                         }
                     )
@@ -226,6 +269,18 @@ class DeyeAdapter(InverterAdapter):
                 "domain": "switch",
                 "service": "turn_on" if enabled else "turn_off",
                 "data": {"entity_id": entity_id},
+            }
+        ]
+
+    def _select_calls(self, key: str, option: str) -> list[dict]:
+        entity_id = self._entity(key)
+        if not entity_id:
+            return []
+        return [
+            {
+                "domain": "select",
+                "service": "select_option",
+                "data": {"entity_id": entity_id, "option": option},
             }
         ]
 

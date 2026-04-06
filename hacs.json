@@ -1,6 +1,6 @@
 {
   "name": "Hybrid AI Energy Manager",
-  "content_in_root": false,
+  "content_in_root": true,
   "country": "PL",
   "homeassistant": "2025.1.0",
   "render_readme": true

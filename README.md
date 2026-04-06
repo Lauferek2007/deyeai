@@ -37,7 +37,15 @@ Obecny kierunek sterowania:
 - `prog1_mode` do nocnego ładowania z sieci przy słabej prognozie PV i taniej energii,
 - logika ekonomiczna oparta o ceny importu i eksportu,
 - diagnostyczny harmonogram 24h pokazujący plan `grid_charge`, `self_use`, `preserve_headroom`, `export_surplus` i `export_battery`,
-- pierwszą próbę mapowania tego harmonogramu na sloty TOU `prog1-3` w Deye.
+- mapowanie harmonogramu na sloty TOU `program_1..6`, jeśli backend je wystawia.
+
+Projekt nie zakłada jednej sztywnej listy encji.
+Warstwa adaptera wybiera sciezke wykonania na podstawie capabilities backendu:
+
+- jesli backend wystawia `work_mode`, sterowanie eksportem idzie przez `work_mode`,
+- jesli wystawia osobny `export_surplus` albo `solar_export`, adapter uzyje switcha,
+- jesli wystawia `time_of_use`, harmonogram aktywuje TOU przez select,
+- jesli wystawia tylko programy `program_X_*`, adapter ustawia same sloty.
 
 To jest właściwy kształt produktu jako `custom integration`, nie tylko add-on. Add-on może pojawić się później do cięższych obliczeń, ale rdzeń musi żyć w integracji HA.
 

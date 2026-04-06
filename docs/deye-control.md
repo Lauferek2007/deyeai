@@ -19,6 +19,15 @@ W praktyce sterowanie robi się kombinacją kilku nastaw:
 - tryby programu czasowego typu `prog1_mode`
 - w niektórych ścieżkach bezpośrednim zapisem rejestrów przez Solarman/Modbus
 
+Różne backendy Home Assistanta wystawiają różne powierzchnie sterowania.
+Dlatego integracja musi wykrywać capabilities, a nie zakładać jedną mapę encji.
+
+Przykłady:
+
+- backend A: `solar_export`, `use_timer`, `grid_charge_enabled`
+- backend B: `work_mode`, `time_of_use`, `program_X_time`, `program_X_charging`
+- backend C: bezpieczny fallback tylko do odczytu i diagnostyki
+
 ## Znane wzorce sterowania
 
 Na podstawie dokumentacji i przykładów społeczności:
@@ -80,11 +89,13 @@ adapter Deye spróbuje ustawić czas startu i tryb dla tych slotów.
 
 Jeżeli są też dostępne:
 
-- `solar_export`
-- `use_timer`
-- `grid_charge_enabled`
+- `work_mode`
+- `time_of_use`
+- `battery_grid_charging`
+- `export_surplus`
+- albo alternatywnie `solar_export`, `use_timer`, `grid_charge_enabled`
 
-projekt spróbuje je przełączać zgodnie z planem.
+projekt spróbuje dobrać właściwą ścieżkę zgodnie z planem i możliwościami backendu.
 
 To nadal jest wersja ostrożna:
 

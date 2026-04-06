@@ -81,13 +81,6 @@ class DeyeStrategyPlanner:
             )
             actions.append(
                 ControlAction(
-                    action="deye_set_load_limit_mode",
-                    value="Allow Export" if should_export_overnight else "Essentials",
-                    reason="Night behaviour selected based on forecast surplus and export economics.",
-                )
-            )
-            actions.append(
-                ControlAction(
                     action="deye_set_battery_charge_current",
                     value=1 if should_export_overnight else 5,
                     reason="Low charge current leaves room for early high-value export or next-morning PV capture.",
@@ -145,9 +138,9 @@ class DeyeStrategyPlanner:
             )
             actions.append(
                 ControlAction(
-                    action="deye_set_program_1_mode",
-                    value="Charge",
-                    reason="Use Deye TOU program slot to allow overnight charging from grid.",
+                    action="deye_prepare_grid_charge_window",
+                    value=True,
+                    reason="Prepare program windows for scheduled grid charging.",
                 )
             )
             summary_parts.append("overnight grid charge planned")
@@ -159,13 +152,6 @@ class DeyeStrategyPlanner:
                     action="deye_hold_strategy",
                     value=round(target_morning_soc, 1),
                     reason="No strong economic or forecast signal justifies aggressive battery action.",
-                )
-            )
-            actions.append(
-                ControlAction(
-                    action="deye_set_load_limit_mode",
-                    value="Zero Export" if export_allowed else "Essentials",
-                    reason="Default safe mode while holding the current energy strategy.",
                 )
             )
             actions.append(
@@ -305,7 +291,7 @@ class DeyeStrategyPlanner:
             index = cursor
 
         grouped.sort(key=lambda item: (self._mode_priority(item[2]), -(item[1] - item[0]), item[0]))
-        selected = grouped[:3]
+        selected = grouped[:6]
 
         periods: list[TouPeriod] = []
         for program_index, (start_hour, end_hour, mode) in enumerate(selected, start=1):
