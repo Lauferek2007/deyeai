@@ -94,7 +94,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             for target_entry in targets:
                 existing_options = dict(target_entry.options)
                 updates = {
-                    key: value
+                    key: ("" if value is None else value)
                     for key, value in call.data.items()
                     if key in CONFIGURABLE_KEYS
                 }

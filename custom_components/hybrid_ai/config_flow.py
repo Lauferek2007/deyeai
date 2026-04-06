@@ -76,6 +76,52 @@ from .const import (
 )
 
 ADAPTER_OPTIONS = ["auto", "deye", "generic", "solarman", "goodwe", "huawei"]
+TEXT_FIELDS = (
+    CONF_BATTERY_SOC_ENTITY,
+    CONF_LOAD_POWER_ENTITY,
+    CONF_PV_POWER_ENTITY,
+    CONF_GRID_POWER_ENTITY,
+    CONF_SOLAR_FORECAST_ENTITY,
+    CONF_WEATHER_ENTITY,
+    CONF_PRICE_IMPORT_ENTITY,
+    CONF_PRICE_EXPORT_ENTITY,
+    CONF_DEYE_WORK_MODE_ENTITY,
+    CONF_DEYE_TIME_OF_USE_ENTITY,
+    CONF_DEYE_EXPORT_SURPLUS_ENTITY,
+    CONF_DEYE_BATTERY_GRID_CHARGING_ENTITY,
+    CONF_DEYE_GRID_CHARGE_ENABLED_ENTITY,
+    CONF_DEYE_LOAD_LIMIT_ENTITY,
+    CONF_DEYE_SOLAR_EXPORT_ENTITY,
+    CONF_DEYE_USE_TIMER_ENTITY,
+    CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY,
+    CONF_DEYE_PROGRAM_1_MODE_ENTITY,
+    CONF_DEYE_PROGRAM_1_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_1_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_1_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_1_SOC_ENTITY,
+    CONF_DEYE_PROGRAM_2_MODE_ENTITY,
+    CONF_DEYE_PROGRAM_2_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_2_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_2_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_2_SOC_ENTITY,
+    CONF_DEYE_PROGRAM_3_MODE_ENTITY,
+    CONF_DEYE_PROGRAM_3_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_3_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_3_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_3_SOC_ENTITY,
+    CONF_DEYE_PROGRAM_4_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_4_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_4_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_4_SOC_ENTITY,
+    CONF_DEYE_PROGRAM_5_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_5_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_5_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_5_SOC_ENTITY,
+    CONF_DEYE_PROGRAM_6_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_6_CHARGE_ENTITY,
+    CONF_DEYE_PROGRAM_6_POWER_ENTITY,
+    CONF_DEYE_PROGRAM_6_SOC_ENTITY,
+)
 
 
 def _parse_weekly_offsets(value):
@@ -141,6 +187,7 @@ def _normalize_user_input(user_input: dict) -> dict:
 
 
 def _build_schema(values: dict) -> vol.Schema:
+    values = _normalized_schema_values(values)
     weekly_offsets = _serialize_weekly_offsets(
         values.get(CONF_WEEKLY_LOAD_OFFSETS, DEFAULT_WEEKLY_LOAD_OFFSETS)
     )
@@ -207,6 +254,40 @@ def _build_schema(values: dict) -> vol.Schema:
             vol.Required(CONF_UPDATE_INTERVAL_MINUTES, default=values.get(CONF_UPDATE_INTERVAL_MINUTES, DEFAULT_UPDATE_INTERVAL_MINUTES)): vol.Coerce(int),
         }
     )
+
+
+def _normalized_schema_values(values: dict) -> dict:
+    normalized = dict(values)
+    for key in TEXT_FIELDS:
+        value = normalized.get(key)
+        if value is None:
+            normalized[key] = ""
+        elif not isinstance(value, str):
+            normalized[key] = str(value)
+
+    if normalized.get(CONF_ADAPTER) is None:
+        normalized[CONF_ADAPTER] = DEFAULT_ADAPTER
+    if normalized.get(CONF_AUTO_DISCOVERY) is None:
+        normalized[CONF_AUTO_DISCOVERY] = True
+    if normalized.get(CONF_BATTERY_CAPACITY_KWH) is None:
+        normalized[CONF_BATTERY_CAPACITY_KWH] = 10.0
+    if normalized.get(CONF_MANUAL_MAX_DAILY_PV_KWH) is None:
+        normalized[CONF_MANUAL_MAX_DAILY_PV_KWH] = DEFAULT_MANUAL_MAX_DAILY_PV_KWH
+    if normalized.get(CONF_MIN_SOC) is None:
+        normalized[CONF_MIN_SOC] = DEFAULT_MIN_SOC
+    if normalized.get(CONF_MAX_SOC) is None:
+        normalized[CONF_MAX_SOC] = DEFAULT_MAX_SOC
+    if normalized.get(CONF_EXPORT_ALLOWED) is None:
+        normalized[CONF_EXPORT_ALLOWED] = False
+    if normalized.get(CONF_GRID_CHARGE_ALLOWED) is None:
+        normalized[CONF_GRID_CHARGE_ALLOWED] = False
+    if normalized.get(CONF_BATTERY_CYCLE_COST) is None:
+        normalized[CONF_BATTERY_CYCLE_COST] = DEFAULT_BATTERY_CYCLE_COST
+    if normalized.get(CONF_ENABLE_WRITE_MODE) is None:
+        normalized[CONF_ENABLE_WRITE_MODE] = False
+    if normalized.get(CONF_UPDATE_INTERVAL_MINUTES) is None:
+        normalized[CONF_UPDATE_INTERVAL_MINUTES] = DEFAULT_UPDATE_INTERVAL_MINUTES
+    return normalized
 
 
 class HybridAiConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
