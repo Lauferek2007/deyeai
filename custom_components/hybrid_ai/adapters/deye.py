@@ -196,11 +196,16 @@ class DeyeAdapter(InverterAdapter):
             }
             for period in action.value:
                 program = int(period["program"])
-                mode_entity = self._entity(mode_keys[program])
-                time_entity = self._entity(time_keys[program])
-                charge_entity = self._entity(charge_keys[program])
-                power_entity = self._entity(power_keys[program])
-                soc_entity = self._entity(soc_keys[program])
+                mode_key = mode_keys.get(program)
+                time_key = time_keys.get(program)
+                charge_key = charge_keys.get(program)
+                power_key = power_keys.get(program)
+                soc_key = soc_keys.get(program)
+                mode_entity = self._entity(mode_key) if mode_key else None
+                time_entity = self._entity(time_key) if time_key else None
+                charge_entity = self._entity(charge_key) if charge_key else None
+                power_entity = self._entity(power_key) if power_key else None
+                soc_entity = self._entity(soc_key) if soc_key else None
                 if time_entity:
                     calls.append(
                         {
