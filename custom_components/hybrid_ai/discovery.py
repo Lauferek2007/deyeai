@@ -24,6 +24,11 @@ ENTITY_PATTERNS = {
     "deye_load_limit_entity": ["load_limit"],
     "deye_battery_max_charge_current_entity": ["battery_max_charge_current", "max_charge_current"],
     "deye_program_1_mode_entity": ["prog1_mode", "program_1_mode"],
+    "deye_program_1_time_entity": ["prog1_time", "program_1_time"],
+    "deye_program_2_mode_entity": ["prog2_mode", "program_2_mode"],
+    "deye_program_2_time_entity": ["prog2_time", "program_2_time"],
+    "deye_program_3_mode_entity": ["prog3_mode", "program_3_mode"],
+    "deye_program_3_time_entity": ["prog3_time", "program_3_time"],
 }
 
 EXCLUDE_KEYWORDS = ["daily", "monthly", "yearly", "total", "lifetime", "status", "temperature", "alarm"]
@@ -58,6 +63,16 @@ def discover_inverter_entities(hass: HomeAssistant) -> DiscoveryResult:
         pv_power_entity=candidates["pv_power_entity"],
         grid_power_entity=candidates["grid_power_entity"],
         solar_forecast_entity=candidates["solar_forecast_entity"],
+        price_import_entity=candidates["price_import_entity"],
+        price_export_entity=candidates["price_export_entity"],
+        deye_load_limit_entity=candidates["deye_load_limit_entity"],
+        deye_battery_max_charge_current_entity=candidates["deye_battery_max_charge_current_entity"],
+        deye_program_1_mode_entity=candidates["deye_program_1_mode_entity"],
+        deye_program_1_time_entity=candidates["deye_program_1_time_entity"],
+        deye_program_2_mode_entity=candidates["deye_program_2_mode_entity"],
+        deye_program_2_time_entity=candidates["deye_program_2_time_entity"],
+        deye_program_3_mode_entity=candidates["deye_program_3_mode_entity"],
+        deye_program_3_time_entity=candidates["deye_program_3_time_entity"],
         notes=notes,
     )
 

@@ -16,6 +16,7 @@ from .const import (
     ATTR_LOAD_PROFILE,
     ATTR_PLAN_SUMMARY,
     ATTR_PRICE_CONTEXT,
+    ATTR_TOU_PLAN,
     ATTR_TARGET_MORNING_SOC,
     DOMAIN,
 )
@@ -70,4 +71,5 @@ class HybridAiDiagnosticSensor(CoordinatorEntity[HybridAiCoordinator], SensorEnt
             "load_profile": self.coordinator.data.get(ATTR_LOAD_PROFILE),
             "hourly_schedule": self.coordinator.data.get(ATTR_HOURLY_SCHEDULE),
             "hourly_load": self.coordinator.data.get("hourly_load"),
+            "tou_plan": self.coordinator.data.get(ATTR_TOU_PLAN),
         }

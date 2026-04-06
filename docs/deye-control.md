@@ -56,6 +56,28 @@ Tryby slotów:
 
 Ten harmonogram nie ustawia jeszcze pełnego TOU schedule w każdym modelu Deye, ale daje wspólny plan decyzyjny, który będzie podstawą pod kolejną iterację wykonawczą.
 
+## Pierwsze wykonanie TOU
+
+Projekt potrafi już spróbować skompresować harmonogram 24h do maksymalnie trzech slotów TOU:
+
+- `grid_charge`
+- `export_battery`
+- `export_surplus`
+
+Jeśli w Home Assistant są dostępne encje:
+
+- `prog1_time`, `prog1_mode`
+- `prog2_time`, `prog2_mode`
+- `prog3_time`, `prog3_mode`
+
+adapter Deye spróbuje ustawić czas startu i tryb dla tych slotów.
+
+To nadal jest wersja ostrożna:
+
+- ustawia początek slotu i tryb,
+- nie mapuje jeszcze wszystkich możliwych parametrów mocy i końca okna,
+- wymaga potwierdzenia nazw opcji select dla konkretnej integracji i modelu.
+
 ## Ograniczenia
 
 Nadal trzeba zweryfikować mapowanie sterowania na konkretnych modelach:

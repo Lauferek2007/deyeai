@@ -9,6 +9,7 @@ from .models import (
     HourPlan,
     OptimizationResult,
     PriceBundle,
+    TouPeriod,
 )
 
 
@@ -57,6 +58,7 @@ class DeyeStrategyPlanner:
             grid_charge_allowed=grid_charge_allowed,
             battery_cycle_cost=battery_cycle_cost,
         )
+        tou_periods = self._build_tou_periods(hourly_schedule)
         summary_parts: list[str] = []
 
         if high_solar_tomorrow:
@@ -148,6 +150,23 @@ class DeyeStrategyPlanner:
                     reason="If morning export value is high, battery charging can be temporarily limited to monetize surplus first.",
                 )
             )
+        if tou_periods:
+            actions.append(
+                ControlAction(
+                    action="deye_apply_tou_schedule",
+                    value=[
+                        {
+                            "program": period.program,
+                            "start_hour": period.start_hour,
+                            "end_hour": period.end_hour,
+                            "mode": period.mode,
+                            "label": period.label,
+                        }
+                        for period in tou_periods
+                    ],
+                    reason="Apply compressed hourly schedule to available Deye TOU program slots.",
+                )
+            )
 
         summary = (
             f"Deye plan: {', '.join(summary_parts)}. "
@@ -162,6 +181,7 @@ class DeyeStrategyPlanner:
             summary=summary,
             actions=actions,
             hourly_schedule=hourly_schedule,
+            tou_periods=tou_periods,
         )
 
     def _build_hourly_schedule(
@@ -223,3 +243,52 @@ class DeyeStrategyPlanner:
                 )
             )
         return schedule
+
+    def _build_tou_periods(self, hourly_schedule: list[HourPlan]) -> list[TouPeriod]:
+        active_modes = {"grid_charge", "export_battery", "export_surplus"}
+        grouped: list[tuple[int, int, str]] = []
+
+        index = 0
+        while index < len(hourly_schedule):
+            slot = hourly_schedule[index]
+            if slot.mode not in active_modes:
+                index += 1
+                continue
+
+            start_hour = slot.start.hour
+            mode = slot.mode
+            end_hour = start_hour + 1
+            cursor = index + 1
+            while cursor < len(hourly_schedule):
+                next_slot = hourly_schedule[cursor]
+                if next_slot.mode != mode or next_slot.start.hour != end_hour:
+                    break
+                end_hour += 1
+                cursor += 1
+
+            grouped.append((start_hour, end_hour, mode))
+            index = cursor
+
+        grouped.sort(key=lambda item: (self._mode_priority(item[2]), -(item[1] - item[0]), item[0]))
+        selected = grouped[:3]
+
+        periods: list[TouPeriod] = []
+        for program_index, (start_hour, end_hour, mode) in enumerate(selected, start=1):
+            periods.append(
+                TouPeriod(
+                    program=program_index,
+                    start_hour=start_hour,
+                    end_hour=min(end_hour, 24),
+                    mode=mode,
+                    label=mode.replace("_", " "),
+                )
+            )
+        return periods
+
+    def _mode_priority(self, mode: str) -> int:
+        priorities = {
+            "grid_charge": 0,
+            "export_battery": 1,
+            "export_surplus": 2,
+        }
+        return priorities.get(mode, 9)

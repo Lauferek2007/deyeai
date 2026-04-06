@@ -19,6 +19,7 @@ from .const import (
     ATTR_LOAD_PROFILE,
     ATTR_PLAN_SUMMARY,
     ATTR_PRICE_CONTEXT,
+    ATTR_TOU_PLAN,
     ATTR_TARGET_MORNING_SOC,
     CONF_ADAPTER,
     CONF_AUTO_DISCOVERY,
@@ -28,6 +29,11 @@ from .const import (
     CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY,
     CONF_DEYE_LOAD_LIMIT_ENTITY,
     CONF_DEYE_PROGRAM_1_MODE_ENTITY,
+    CONF_DEYE_PROGRAM_1_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_2_MODE_ENTITY,
+    CONF_DEYE_PROGRAM_2_TIME_ENTITY,
+    CONF_DEYE_PROGRAM_3_MODE_ENTITY,
+    CONF_DEYE_PROGRAM_3_TIME_ENTITY,
     CONF_ENABLE_WRITE_MODE,
     CONF_EXPORT_ALLOWED,
     CONF_GRID_CHARGE_ALLOWED,
@@ -170,6 +176,16 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 }
                 for slot in result.hourly_schedule
             ],
+            ATTR_TOU_PLAN: [
+                {
+                    "program": slot.program,
+                    "start_hour": slot.start_hour,
+                    "end_hour": slot.end_hour,
+                    "mode": slot.mode,
+                    "label": slot.label,
+                }
+                for slot in result.tou_periods
+            ],
             "snapshot": asdict(snapshot),
             ATTR_DISCOVERY: discovery_as_dict(self.discovery),
         }
@@ -198,6 +214,11 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 deye_load_limit_entity=self.entry.data.get(CONF_DEYE_LOAD_LIMIT_ENTITY) or None,
                 deye_battery_max_charge_current_entity=self.entry.data.get(CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY) or None,
                 deye_program_1_mode_entity=self.entry.data.get(CONF_DEYE_PROGRAM_1_MODE_ENTITY) or None,
+                deye_program_1_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_1_TIME_ENTITY) or None,
+                deye_program_2_mode_entity=self.entry.data.get(CONF_DEYE_PROGRAM_2_MODE_ENTITY) or None,
+                deye_program_2_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_2_TIME_ENTITY) or None,
+                deye_program_3_mode_entity=self.entry.data.get(CONF_DEYE_PROGRAM_3_MODE_ENTITY) or None,
+                deye_program_3_time_entity=self.entry.data.get(CONF_DEYE_PROGRAM_3_TIME_ENTITY) or None,
             )
 
         result = discover_inverter_entities(self.hass)

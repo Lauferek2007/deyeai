@@ -62,6 +62,15 @@ class HourPlan:
 
 
 @dataclass(slots=True)
+class TouPeriod:
+    program: int
+    start_hour: int
+    end_hour: int
+    mode: str
+    label: str = ""
+
+
+@dataclass(slots=True)
 class OptimizationResult:
     target_morning_soc: float
     expected_surplus_kwh: float
@@ -70,6 +79,7 @@ class OptimizationResult:
     summary: str
     actions: list[ControlAction] = field(default_factory=list)
     hourly_schedule: list[HourPlan] = field(default_factory=list)
+    tou_periods: list[TouPeriod] = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -87,4 +97,9 @@ class DiscoveryResult:
     deye_load_limit_entity: str | None = None
     deye_battery_max_charge_current_entity: str | None = None
     deye_program_1_mode_entity: str | None = None
+    deye_program_1_time_entity: str | None = None
+    deye_program_2_mode_entity: str | None = None
+    deye_program_2_time_entity: str | None = None
+    deye_program_3_mode_entity: str | None = None
+    deye_program_3_time_entity: str | None = None
     notes: list[str] = field(default_factory=list)
