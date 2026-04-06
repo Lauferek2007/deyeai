@@ -28,12 +28,12 @@ const DISPLAY_LABELS = {
   export_battery: "Eksport z baterii",
   preserve_headroom: "Zachowaj miejsce",
   grid_charge: "Ladowanie z sieci",
-  set_target_morning_soc: "Ustaw poranny SOC",
+  set_target_morning_soc: "Ustaw poranny poziom baterii",
   allow_overnight_discharge: "Zezwol na nocne rozladowanie",
   allow_export_discharge: "Zezwol na eksport z baterii",
   hold_reserve: "Zachowaj rezerwe",
-  deye_enable_use_timer: "Wlacz harmonogram TOU",
-  deye_set_target_morning_soc: "Ustaw poranny SOC",
+  deye_enable_use_timer: "Wlacz harmonogram godzin",
+  deye_set_target_morning_soc: "Ustaw poziom baterii na rano",
   deye_set_battery_charge_current: "Ustaw prad ladowania",
   deye_enable_system_export: "Wlacz eksport do sieci",
   deye_allow_export_discharge: "Zezwol na eksport z baterii",
@@ -42,7 +42,14 @@ const DISPLAY_LABELS = {
   deye_prepare_grid_charge_window: "Przygotuj okno ladowania",
   deye_hold_strategy: "Zachowaj energie w baterii",
   deye_limit_early_pv_battery_charging: "Ogranicz poranne ladowanie baterii",
-  deye_apply_tou_schedule: "Zastosuj harmonogram TOU",
+  deye_apply_tou_schedule: "Zastosuj plan godzin",
+  missing: "brak",
+  invalid: "nieprawidlowe",
+  invalid_unit: "zla jednostka",
+  hourly: "ceny godzinowe",
+  single_value: "pojedyncza wartosc",
+  ok: "ok",
+  manual: "ustawione recznie",
   entity: "encja prognozy PV",
   weather_hourly_service: "pogoda godzinowa",
   weather_daily_service: "pogoda dzienna",
@@ -140,6 +147,7 @@ class HybridAiCard extends HTMLElement {
     const settings = attrs.settings || {};
     const discovery = attrs.discovery || {};
     const forecastMeta = attrs.forecast_details?.solar || attrs.forecast_details || {};
+    const entryId = attrs.entry_id;
     const activeMode = hourly[0]?.mode || "self_use";
     const nextTou = touPlan[0]
       ? `P${touPlan[0].program} ${this._hour(touPlan[0].start_hour)}-${this._hour(touPlan[0].end_hour)}`
@@ -150,7 +158,7 @@ class HybridAiCard extends HTMLElement {
         ${this._style()}
         <div class="shell ${this._config.compact ? "compact" : ""}">
           ${this._renderHero(stateObj, attrs, activeMode, nextTou, forecastMeta)}
-          ${this._renderActionBar()}
+          ${this._renderActionBar(entryId)}
           ${this._config.show_chart ? this._renderChart(hourly, attrs, forecastMeta) : ""}
           <div class="grid-panels">
             ${this._config.show_settings ? this._renderSettings(settings, forecastMeta) : ""}
@@ -189,10 +197,23 @@ class HybridAiCard extends HTMLElement {
           }),
         );
     }
+
+    const settingsButton = this.shadowRoot.getElementById("hybrid-ai-settings");
+    if (settingsButton) {
+      settingsButton.onclick = () => {
+        const entityId = this._findEntity();
+        const entryId = entityId ? this._hass?.states?.[entityId]?.attributes?.entry_id : undefined;
+        const path = entryId
+          ? `/config/integrations/integration/${entryId}`
+          : "/config/integrations/dashboard";
+        history.pushState(null, "", path);
+        window.dispatchEvent(new Event("location-changed"));
+      };
+    }
   }
 
   _renderHero(stateObj, attrs, activeMode, nextTou, forecastMeta) {
-    const summary = stateObj.state || "No plan";
+    const summary = stateObj.state || "Brak planu";
     const chips = [
       this._badge("Adapter", this._labelize(attrs.adapter || "unknown")),
       this._badge(
@@ -201,7 +222,7 @@ class HybridAiCard extends HTMLElement {
         attrs.dry_run ? "amber" : "teal",
       ),
       this._badge("Biezacy plan", this._labelize(activeMode)),
-      this._badge("Nastepne TOU", nextTou),
+      this._badge("Nastepne okno", nextTou),
     ].join("");
 
     return `
@@ -215,7 +236,7 @@ class HybridAiCard extends HTMLElement {
           ${this._metric("PV na 24h", this._formatNumber(attrs.forecast_solar_kwh, "kWh"), "Spodziewana produkcja energii z instalacji PV")}
           ${this._metric("Zuzycie na 24h", this._formatNumber(attrs.forecast_load_kwh, "kWh"), "Przewidywane zuzycie budynku")}
           ${this._metric("Nadwyzka", this._formatNumber(attrs.expected_surplus_kwh, "kWh"), "Energia do eksportu albo zwolnienia miejsca w baterii")}
-          ${this._metric("Poranny SOC", this._formatNumber(attrs.target_morning_soc, "%"), "Docelowy poziom naladowania baterii rano")}
+          ${this._metric("Poziom baterii rano", this._formatNumber(attrs.target_morning_soc, "%"), "Poziom baterii, do ktorego system chce dojsc przed porankiem")}
           ${this._metric("Pewnosc", this._formatPercent(attrs.forecast_confidence), "Jak pewna jest obecna prognoza")}
           ${this._metric("Zrodlo PV", this._shortForecastSource(forecastMeta), "Skad integracja bierze prognoze PV")}
         </div>
@@ -223,30 +244,38 @@ class HybridAiCard extends HTMLElement {
     `;
   }
 
-  _renderActionBar() {
+  _renderActionBar(entryId) {
     return `
       <section class="panel actions-panel">
-        <div class="panel-title">Szybkie akcje</div>
+        <div class="panel-title">Najwazniejsze przyciski</div>
+        <div class="panel-subtitle">Te przyciski pomagaja przeliczyc plan, poprawic wykryte encje i wejsc do ustawien integracji.</div>
         <div class="action-buttons">
           <button id="hybrid-ai-run" class="action-button action-primary">
             <span class="action-icon">+</span>
             <span>
-              <strong>Przelicz plan</strong>
-              <small>Przelicza prognozy, ceny i plan pracy baterii na nowo.</small>
+              <strong>Przelicz teraz</strong>
+              <small>Liczy plan jeszcze raz na podstawie pogody, zuzycia domu i cen energii.</small>
             </span>
           </button>
           <button id="hybrid-ai-discover" class="action-button action-secondary">
             <span class="action-icon">?</span>
             <span>
-              <strong>Autowykrywanie</strong>
-              <small>Skanuje encje Home Assistanta i probuje ponownie dopasowac falownik, pogode i ceny.</small>
+              <strong>Skanuj encje</strong>
+              <small>Szuka ponownie falownika, pogody, cen i innych potrzebnych encji w Home Assistant.</small>
+            </span>
+          </button>
+          <button id="hybrid-ai-settings" class="action-button action-secondary">
+            <span class="action-icon">=</span>
+            <span>
+              <strong>Popraw ustawienia</strong>
+              <small>Otwiera ustawienia integracji, gdzie mozna recznie wskazac poprawne encje.</small>
             </span>
           </button>
           <button id="hybrid-ai-more-info" class="action-button action-ghost">
             <span class="action-icon">i</span>
             <span>
-              <strong>Szczegoly encji</strong>
-              <small>Otwiera glowna encje diagnostyczna integracji Hybrid AI.</small>
+              <strong>Dane techniczne</strong>
+              <small>Pokazuje surowe dane diagnostyczne, jesli chcesz sprawdzic szczegoly pracy integracji.</small>
             </span>
           </button>
         </div>
@@ -259,7 +288,7 @@ class HybridAiCard extends HTMLElement {
     if (!series.length) {
       return `
         <section class="panel chart-panel">
-          <div class="panel-title">Wykres PV i zuzycia</div>
+          <div class="panel-title">Produkcja i zuzycie w ciagu dnia</div>
           <div class="muted">Brak godzinowego planu do wyswietlenia.</div>
         </section>
       `;
@@ -276,8 +305,8 @@ class HybridAiCard extends HTMLElement {
       <section class="panel chart-panel">
         <div class="panel-header">
           <div>
-            <div class="panel-title">Wykres PV i zuzycia</div>
-            <div class="panel-subtitle">${productionHint}, zrodlo: ${solarSource}</div>
+            <div class="panel-title">Produkcja i zuzycie w ciagu dnia</div>
+            <div class="panel-subtitle">Zolta linia pokazuje przewidywana produkcje z paneli, zielona przewidywane zuzycie domu. ${productionHint}, zrodlo: ${solarSource}</div>
           </div>
           <div class="legend">
             <span class="legend-item"><span class="legend-swatch pv"></span>PV</span>
@@ -369,20 +398,21 @@ class HybridAiCard extends HTMLElement {
         : "nie ustawiono";
     return `
       <section class="panel">
-        <div class="panel-title">Ustawienia planera</div>
+        <div class="panel-title">Jak system jest teraz ustawiony</div>
+        <div class="panel-subtitle">To sa aktualne zasady, wedlug ktorych liczony jest plan pracy baterii i falownika.</div>
         <div class="fact-grid">
-          ${this._fact("Autowykrywanie", settings.auto_discovery ? "wlaczone" : "wylaczone")}
-          ${this._fact("Tryb zapisu", settings.enable_write_mode ? "wlaczony" : "wylaczony")}
-          ${this._fact("Min SOC", this._formatNumber(settings.min_soc, "%"))}
-          ${this._fact("Max SOC", this._formatNumber(settings.max_soc, "%"))}
-          ${this._fact("Eksport", settings.export_allowed ? "tak" : "nie")}
-          ${this._fact("Ladowanie z sieci", settings.grid_charge_allowed ? "tak" : "nie")}
-          ${this._fact("Koszt cyklu", this._formatNumber(settings.battery_cycle_cost, ""))}
-          ${this._fact("Odswiezanie", this._formatNumber(settings.update_interval_minutes, "min"))}
-          ${this._fact("Maks. PV na dobe", maxDailyPv)}
-          ${this._fact("Encja pogody", settings.weather_entity || "auto / brak")}
-          ${this._fact("Encja prognozy PV", settings.solar_forecast_entity || "auto / brak")}
-          ${this._fact("Metoda prognozy", this._shortForecastSource(forecastMeta))}
+          ${this._fact("Automatyczne szukanie encji", settings.auto_discovery ? "wlaczone" : "wylaczone")}
+          ${this._fact("Wysylanie zmian do falownika", settings.enable_write_mode ? "wlaczone" : "wylaczone")}
+          ${this._fact("Minimalny poziom baterii", this._formatNumber(settings.min_soc, "%"))}
+          ${this._fact("Maksymalny poziom baterii", this._formatNumber(settings.max_soc, "%"))}
+          ${this._fact("Czy wolno sprzedawac prad", settings.export_allowed ? "tak" : "nie")}
+          ${this._fact("Czy wolno ladowac z sieci", settings.grid_charge_allowed ? "tak" : "nie")}
+          ${this._fact("Koszt zuzycia baterii", this._formatNumber(settings.battery_cycle_cost, ""))}
+          ${this._fact("Jak czesto liczyc plan", this._formatNumber(settings.update_interval_minutes, "min"))}
+          ${this._fact("Maksymalna produkcja w idealny dzien", maxDailyPv)}
+          ${this._fact("Skad jest brana pogoda", settings.weather_entity || "nie wskazano")}
+          ${this._fact("Skad jest brana prognoza produkcji", settings.solar_forecast_entity || "nie wskazano")}
+          ${this._fact("Jak liczona jest prognoza produkcji", this._shortForecastSource(forecastMeta))}
         </div>
       </section>
     `;
@@ -391,16 +421,18 @@ class HybridAiCard extends HTMLElement {
   _renderDiscovery(discovery) {
     const notes = Array.isArray(discovery.notes) ? discovery.notes : [];
     const discovered = [
-      this._fact("Adapter", this._labelize(discovery.adapter || "unknown")),
-      this._fact("Pewnosc", this._formatPercent(discovery.confidence || 0)),
-      this._fact("Dopasowanie", this._labelize(discovery.matched_by || "unknown")),
-      this._fact("SOC baterii", this._shortEntity(discovery.battery_soc_entity)),
-      this._fact("Moc zuzycia", this._shortEntity(discovery.load_power_entity)),
-      this._fact("Moc PV", this._shortEntity(discovery.pv_power_entity)),
-      this._fact("Moc sieci", this._shortEntity(discovery.grid_power_entity)),
-      this._fact("Pogoda", this._shortEntity(discovery.weather_entity)),
-      this._fact("Prognoza PV", this._shortEntity(discovery.solar_forecast_entity)),
-      this._fact("Tryb pracy", this._shortEntity(discovery.deye_work_mode_entity)),
+      this._fact("Jaki typ falownika wykryto", this._labelize(discovery.adapter || "unknown")),
+      this._fact("Pewnosc dopasowania", this._formatPercent(discovery.confidence || 0)),
+      this._fact("Na jakiej podstawie", this._labelize(discovery.matched_by || "unknown")),
+      this._fact("Poziom baterii", this._shortEntity(discovery.battery_soc_entity)),
+      this._fact("Zuzycie domu teraz", this._shortEntity(discovery.load_power_entity)),
+      this._fact("Produkcja z paneli teraz", this._shortEntity(discovery.pv_power_entity)),
+      this._fact("Przeplyw z siecia", this._shortEntity(discovery.grid_power_entity)),
+      this._fact("Encja pogody", this._shortEntity(discovery.weather_entity)),
+      this._fact("Encja prognozy produkcji", this._shortEntity(discovery.solar_forecast_entity)),
+      this._fact("Tryb pracy falownika", this._shortEntity(discovery.deye_work_mode_entity)),
+      this._fact("Cena zakupu energii", this._shortEntity(discovery.price_import_entity)),
+      this._fact("Cena sprzedazy energii", this._shortEntity(discovery.price_export_entity)),
     ].join("");
 
     const notesBlock = notes.length
@@ -409,7 +441,8 @@ class HybridAiCard extends HTMLElement {
 
     return `
       <section class="panel">
-        <div class="panel-title">Status autowykrywania</div>
+        <div class="panel-title">Co system wykryl sam</div>
+        <div class="panel-subtitle">Jesli cos jest bledne, kliknij przycisk Popraw ustawienia i recznie wskaz poprawne encje.</div>
         <div class="fact-grid">${discovered}</div>
         ${notesBlock}
       </section>
@@ -417,15 +450,21 @@ class HybridAiCard extends HTMLElement {
   }
 
   _renderPrices(prices) {
+    const importSource = prices.sources?.import || {};
+    const exportSource = prices.sources?.export || {};
     return `
       <section class="panel">
-        <div class="panel-title">Kontekst cenowy</div>
+        <div class="panel-title">Ceny energii</div>
+        <div class="panel-subtitle">Te dane mowia systemowi, czy lepiej zostawic prad w baterii, kupic go z sieci czy sprzedac.</div>
         <div class="fact-grid">
-          ${this._fact("Sredni zakup", this._formatNumber(prices.avg_import_price, ""))}
-          ${this._fact("Srednia sprzedaz", this._formatNumber(prices.avg_export_price, ""))}
-          ${this._fact("Najnizszy zakup", this._formatNumber(prices.cheapest_import_price, ""))}
-          ${this._fact("Najlepsza sprzedaz", this._formatNumber(prices.highest_export_price, ""))}
+          ${this._fact("Srednia cena zakupu", this._formatPriceValue(prices.avg_import_price, importSource))}
+          ${this._fact("Srednia cena sprzedazy", this._formatPriceValue(prices.avg_export_price, exportSource))}
+          ${this._fact("Najtansza godzina zakupu", this._formatPriceValue(prices.cheapest_import_price, importSource))}
+          ${this._fact("Najlepsza godzina sprzedazy", this._formatPriceValue(prices.highest_export_price, exportSource))}
+          ${this._fact("Skad bierze cene zakupu", this._priceSourceText(importSource))}
+          ${this._fact("Skad bierze cene sprzedazy", this._priceSourceText(exportSource))}
         </div>
+        ${this._renderPriceNotice(importSource, exportSource)}
       </section>
     `;
   }
@@ -446,11 +485,12 @@ class HybridAiCard extends HTMLElement {
             `,
           )
           .join("")
-      : `<div class="muted">Brak aktywnych okien TOU.</div>`;
+      : `<div class="muted">Brak aktywnych okien czasowych.</div>`;
 
     return `
       <section class="panel">
-        <div class="panel-title">Okna TOU</div>
+        <div class="panel-title">Zaplanowane okna pracy falownika</div>
+        <div class="panel-subtitle">To sa przedzialy godzin, ktore system chce ustawic w harmonogramie falownika.</div>
         <div class="slot-grid">${content}</div>
       </section>
     `;
@@ -475,7 +515,8 @@ class HybridAiCard extends HTMLElement {
 
     return `
       <section class="panel panel-wide">
-        <div class="panel-title">Zaplanowane akcje adaptera</div>
+        <div class="panel-title">Co system chce zrobic</div>
+        <div class="panel-subtitle">Tu widzisz konkretne decyzje, ktore integracja chce wyslac do falownika.</div>
         <div class="stack-list">${content}</div>
       </section>
     `;
@@ -500,7 +541,8 @@ class HybridAiCard extends HTMLElement {
 
     return `
       <section class="panel panel-wide">
-        <div class="panel-title">Najblizszy plan godzinowy</div>
+        <div class="panel-title">Plan na najblizsze godziny</div>
+        <div class="panel-subtitle">Pokazuje, jak system ocenia kolejne godziny: ile bedzie produkcji, zuzycia i jaki tryb pracy wybierze.</div>
         <div class="stack-list">${content}</div>
       </section>
     `;
@@ -581,6 +623,36 @@ class HybridAiCard extends HTMLElement {
     return `${(Number(value) * 100).toFixed(0)} %`;
   }
 
+  _formatPriceValue(value, sourceMeta) {
+    const status = sourceMeta?.status || "missing";
+    if (["missing", "invalid", "invalid_unit"].includes(status)) {
+      return "brak";
+    }
+    return this._formatNumber(value, "");
+  }
+
+  _priceSourceText(sourceMeta) {
+    if (!sourceMeta || !sourceMeta.source || sourceMeta.source === "none") {
+      return "nie podlaczono";
+    }
+    const label = this._labelize(sourceMeta.status || "missing");
+    return `${this._shortEntity(sourceMeta.source)} (${label})`;
+  }
+
+  _renderPriceNotice(importSource, exportSource) {
+    const problems = [];
+    if (["missing", "invalid", "invalid_unit"].includes(importSource?.status || "missing")) {
+      problems.push("Cena zakupu energii nie jest jeszcze poprawnie podlaczona.");
+    }
+    if (["missing", "invalid", "invalid_unit"].includes(exportSource?.status || "missing")) {
+      problems.push("Cena sprzedazy energii nie jest jeszcze poprawnie podlaczona.");
+    }
+    if (!problems.length) {
+      return "";
+    }
+    return `<div class="notice-list">${problems.map((item) => `<div class="notice-item">${item}</div>`).join("")}</div>`;
+  }
+
   _hour(value) {
     return `${String(Number(value)).padStart(2, "0")}:00`;
   }
@@ -607,6 +679,7 @@ class HybridAiCard extends HTMLElement {
           --hybrid-gold: #facc15;
           --hybrid-teal: #0f766e;
           --hybrid-mint: #34d399;
+          --hybrid-font-ui: "Segoe UI Variable Text", "Segoe UI", "Noto Sans", system-ui, sans-serif;
         }
         ha-card {
           overflow: hidden;
@@ -615,6 +688,11 @@ class HybridAiCard extends HTMLElement {
           padding: 18px;
           display: grid;
           gap: 16px;
+          font-family: var(--hybrid-font-ui);
+          font-size: 14px;
+          line-height: 1.55;
+          -webkit-font-smoothing: antialiased;
+          text-rendering: optimizeLegibility;
           background:
             radial-gradient(circle at top right, rgba(250, 204, 21, 0.12), transparent 32%),
             radial-gradient(circle at bottom left, rgba(52, 211, 153, 0.10), transparent 24%);
@@ -641,8 +719,9 @@ class HybridAiCard extends HTMLElement {
         }
         .summary {
           margin-top: 10px;
-          font-size: 1.18rem;
-          line-height: 1.55;
+          font-size: 1.08rem;
+          line-height: 1.65;
+          font-weight: 500;
           max-width: 52rem;
         }
         .badge-row {
@@ -687,17 +766,17 @@ class HybridAiCard extends HTMLElement {
         .fact-label {
           font-size: 0.78rem;
           opacity: 1;
-          color: rgba(15, 23, 42, 0.68);
+          color: rgba(15, 23, 42, 0.86);
         }
         .metric-value {
           margin-top: 8px;
-          font-size: 1.28rem;
-          font-weight: 700;
+          font-size: 1.16rem;
+          font-weight: 600;
         }
         .metric-help {
           margin-top: 6px;
           font-size: 0.75rem;
-          opacity: 0.68;
+          opacity: 0.88;
           line-height: 1.45;
         }
         .panel {
@@ -711,14 +790,15 @@ class HybridAiCard extends HTMLElement {
           grid-column: 1 / -1;
         }
         .panel-title {
-          font-size: 0.98rem;
-          font-weight: 700;
+          font-size: 0.94rem;
+          font-weight: 600;
           color: var(--hybrid-ink);
         }
         .panel-subtitle {
           margin-top: 4px;
-          font-size: 0.82rem;
-          color: rgba(15, 23, 42, 0.64);
+          font-size: 0.84rem;
+          color: rgba(15, 23, 42, 0.82);
+          line-height: 1.55;
         }
         .panel-header,
         .slot-top,
@@ -764,7 +844,7 @@ class HybridAiCard extends HTMLElement {
         .action-button small {
           display: block;
           margin-top: 4px;
-          opacity: 0.72;
+          opacity: 0.88;
           line-height: 1.45;
         }
         .action-primary {
@@ -867,7 +947,7 @@ class HybridAiCard extends HTMLElement {
         .hour-mode {
           margin-top: 6px;
           font-size: 0.94rem;
-          font-weight: 600;
+          font-weight: 500;
           color: var(--hybrid-ink);
           line-height: 1.5;
           word-break: break-word;
@@ -883,7 +963,7 @@ class HybridAiCard extends HTMLElement {
         .muted,
         .empty-copy,
         .action-reason {
-          color: rgba(15, 23, 42, 0.78);
+          color: rgba(15, 23, 42, 0.84);
           line-height: 1.5;
         }
         .slot-card .slot-program,
@@ -963,7 +1043,7 @@ class HybridAiCardEditor extends HTMLElement {
         </label>
         ${this._checkbox("show_settings", "Pokaz ustawienia planera")}
         ${this._checkbox("show_discovery", "Pokaz status autowykrywania")}
-        ${this._checkbox("show_tou_plan", "Pokaz okna TOU")}
+        ${this._checkbox("show_tou_plan", "Pokaz okna pracy falownika")}
         ${this._checkbox("show_actions", "Pokaz zaplanowane akcje")}
         ${this._checkbox("show_hourly_schedule", "Pokaz plan godzinowy")}
         ${this._checkbox("show_price_context", "Pokaz kontekst cenowy")}
@@ -1023,8 +1103,8 @@ if (!customElements.get("hybrid-ai-card-editor")) {
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: CARD_TYPE,
-  name: "Hybrid AI Card",
-  description: "Dashboard card for Hybrid AI Energy Manager with PV, load, TOU and discovery diagnostics.",
+  name: "Hybrid AI",
+  description: "Karta do podgladu planu pracy baterii, prognozy PV, cen energii i diagnostyki autowykrywania.",
   preview: true,
   documentationURL: "https://github.com/Lauferek2007/deyeai",
 });

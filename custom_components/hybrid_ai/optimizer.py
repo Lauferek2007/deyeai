@@ -59,7 +59,7 @@ class BatteryOptimizer:
                     )
                 )
             summary = (
-                f"Rozladuj baterie w nocy do okolo {target_morning_soc:.0f}% SOC. "
+                f"Rozladuj baterie w nocy do okolo {target_morning_soc:.0f}% poziomu baterii. "
                 f"Prognozowana nadwyzka: {expected_surplus_kwh:.1f} kWh."
             )
         else:

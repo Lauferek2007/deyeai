@@ -41,6 +41,8 @@ class DeyeStrategyPlanner:
 
         future_self_consumption_value = max(prices.avg_import_price - battery_cycle_cost, 0.0)
         export_value_now = max(prices.highest_export_price - battery_cycle_cost, 0.0)
+        import_price_available = bool(prices.import_prices) or prices.avg_import_price > 0
+        export_price_available = bool(prices.export_prices) or prices.highest_export_price > 0
         cheap_import_now = prices.cheapest_import_price > 0 and prices.cheapest_import_price < future_self_consumption_value * 0.7
         high_export_window = export_allowed and export_value_now > future_self_consumption_value * 1.1
         high_solar_tomorrow = expected_surplus_kwh > storage_headroom_kwh * 0.75
@@ -69,7 +71,7 @@ class DeyeStrategyPlanner:
                 ControlAction(
                     action="deye_enable_use_timer",
                     value=True,
-                    reason="Harmonogram TOU musi byc wlaczony, zanim programy czasowe Deye zaczna sterowac praca falownika.",
+                    reason="Falownik musi miec wlaczony harmonogram godzin, zanim zacznie wykonywac plan przygotowany przez integracje.",
                 )
             )
             actions.append(
@@ -112,14 +114,14 @@ class DeyeStrategyPlanner:
                 ControlAction(
                     action="deye_enable_use_timer",
                     value=True,
-                    reason="Timer TOU jest wymagany do zaplanowanych okien ladowania z sieci.",
+                    reason="Falownik musi miec wlaczony harmonogram godzin, aby ladowanie z sieci uruchomilo sie o wybranych porach.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="deye_enable_grid_charge",
                     value=True,
-                    reason="Ladowanie z sieci musi byc wlaczone systemowo, zanim rozpocznie sie ladowanie w oknach TOU.",
+                    reason="Falownik musi miec wlaczone ladowanie z sieci, zanim zacznie uzupelniac baterie wedlug planu godzinowego.",
                 )
             )
             actions.append(
@@ -185,14 +187,22 @@ class DeyeStrategyPlanner:
                         }
                         for period in tou_periods
                     ],
-                    reason="Zastosuj skompresowany plan godzinowy do dostepnych slotow TOU w Deye.",
+                    reason="Przepisz plan godzinowy do dostepnych okien czasowych w falowniku Deye.",
                 )
             )
 
-        summary = (
-            f"Plan Deye: {', '.join(summary_parts)}. "
-            f"Sredni zakup {prices.avg_import_price:.3f}, najlepsza sprzedaz {prices.highest_export_price:.3f}."
-        )
+        price_summary = "Ceny energii nie sa jeszcze podlaczone."
+        if import_price_available and export_price_available:
+            price_summary = (
+                f"Srednia cena zakupu {prices.avg_import_price:.3f}, "
+                f"najlepsza cena sprzedazy {prices.highest_export_price:.3f}."
+            )
+        elif import_price_available:
+            price_summary = f"Srednia cena zakupu {prices.avg_import_price:.3f}. Cena sprzedazy nie jest podlaczona."
+        elif export_price_available:
+            price_summary = f"Najlepsza cena sprzedazy {prices.highest_export_price:.3f}. Cena zakupu nie jest podlaczona."
+
+        summary = f"Plan Deye: {', '.join(summary_parts)}. {price_summary}"
 
         return OptimizationResult(
             target_morning_soc=target_morning_soc,

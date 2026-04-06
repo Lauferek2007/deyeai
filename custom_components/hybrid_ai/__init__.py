@@ -7,9 +7,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import (
+    CONFIGURABLE_KEYS,
     CONF_AUTO_DISCOVERY,
     DATA_COORDINATORS,
     DOMAIN,
+    SERVICE_APPLY_MANUAL_MAPPING,
     SERVICE_DISCOVER_ENTITIES,
     SERVICE_RUN_OPTIMIZATION,
 )
@@ -79,6 +81,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.services.async_register(DOMAIN, SERVICE_DISCOVER_ENTITIES, handle_discover_entities)
 
+    if not hass.services.has_service(DOMAIN, SERVICE_APPLY_MANUAL_MAPPING):
+
+        async def handle_apply_manual_mapping(call: ServiceCall) -> None:
+            entry_id = call.data.get("entry_id")
+            coordinators = hass.data.get(DOMAIN, {}).get(DATA_COORDINATORS, {})
+            targets = [
+                stored.entry
+                for stored in coordinators.values()
+                if not entry_id or stored.entry.entry_id == entry_id
+            ]
+            for target_entry in targets:
+                existing_options = dict(target_entry.options)
+                updates = {
+                    key: value
+                    for key, value in call.data.items()
+                    if key in CONFIGURABLE_KEYS
+                }
+                hass.config_entries.async_update_entry(
+                    target_entry,
+                    options={**existing_options, **updates},
+                )
+                await hass.config_entries.async_reload(target_entry.entry_id)
+
+        hass.services.async_register(DOMAIN, SERVICE_APPLY_MANUAL_MAPPING, handle_apply_manual_mapping)
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
@@ -102,5 +129,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(DOMAIN, SERVICE_RUN_OPTIMIZATION)
         if hass.services.has_service(DOMAIN, SERVICE_DISCOVER_ENTITIES):
             hass.services.async_remove(DOMAIN, SERVICE_DISCOVER_ENTITIES)
+        if hass.services.has_service(DOMAIN, SERVICE_APPLY_MANUAL_MAPPING):
+            hass.services.async_remove(DOMAIN, SERVICE_APPLY_MANUAL_MAPPING)
 
     return unload_ok

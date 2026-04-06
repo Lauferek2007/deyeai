@@ -1,6 +1,9 @@
 run_optimization:
-  name: Run optimization
-  description: Refresh optimizer inputs and rebuild the battery control plan.
+  name: Przelicz plan
+  description: Odswieza dane i liczy plan pracy baterii oraz falownika od nowa.
 discover_entities:
-  name: Discover entities
-  description: Scan Home Assistant entities and infer the inverter adapter and source entities.
+  name: Skanuj encje
+  description: Ponownie wyszukuje falownik i potrzebne encje, takie jak pogoda, ceny i pomiary mocy.
+apply_manual_mapping:
+  name: Zapisz reczne mapowanie
+  description: Nadpisuje autowykrywanie i zapisuje recznie wskazane encje oraz ustawienia planera.

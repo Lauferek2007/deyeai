@@ -72,6 +72,7 @@ class HybridAiDiagnosticSensor(CoordinatorEntity[HybridAiCoordinator], SensorEnt
 
         base.update(
             {
+                "entry_id": self.coordinator.data.get("entry_id"),
                 "forecast_confidence": self.coordinator.data.get("forecast_confidence"),
                 "forecast_details": self.coordinator.data.get(ATTR_FORECAST_DETAILS),
                 "forecast_solar_kwh": self.coordinator.data.get(ATTR_FORECAST_SOLAR_KWH),

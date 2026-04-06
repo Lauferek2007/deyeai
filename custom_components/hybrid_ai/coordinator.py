@@ -175,6 +175,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
         )
 
         return {
+            "entry_id": self.entry.entry_id,
             ATTR_PLAN_SUMMARY: result.summary,
             ATTR_FORECAST_SOLAR_KWH: round(forecast.solar_kwh_next_24h, 2),
             ATTR_FORECAST_LOAD_KWH: round(forecast.load_kwh_next_24h, 2),
@@ -199,6 +200,8 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 ),
                 "weather_entity": self._resolved_value(CONF_WEATHER_ENTITY),
                 "solar_forecast_entity": self._resolved_value(CONF_SOLAR_FORECAST_ENTITY),
+                "price_import_entity": self._resolved_value(CONF_PRICE_IMPORT_ENTITY),
+                "price_export_entity": self._resolved_value(CONF_PRICE_EXPORT_ENTITY),
             },
             ATTR_PRICE_CONTEXT: {
                 "avg_import_price": round(prices.avg_import_price, 4),

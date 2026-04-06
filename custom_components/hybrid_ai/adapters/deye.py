@@ -79,37 +79,15 @@ class DeyeAdapter(InverterAdapter):
 
     def _map_action_to_services(self, action: ControlAction) -> list[dict]:
         if action.action == "deye_set_load_limit_mode":
-            entity_id = self._entity(CONF_DEYE_LOAD_LIMIT_ENTITY)
-            if entity_id:
-                return [
-                    {
-                        "domain": "select",
-                        "service": "select_option",
-                        "data": {"entity_id": entity_id, "option": action.value},
-                    }
-                ]
+            return self._select_calls(CONF_DEYE_LOAD_LIMIT_ENTITY, action.value)
 
         if action.action == "deye_set_battery_charge_current":
             entity_id = self._entity(CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY)
             if entity_id:
-                return [
-                    {
-                        "domain": "number",
-                        "service": "set_value",
-                        "data": {"entity_id": entity_id, "value": action.value},
-                    }
-                ]
+                return [self._number_call(entity_id, action.value)]
 
         if action.action == "deye_set_program_1_mode":
-            entity_id = self._entity(CONF_DEYE_PROGRAM_1_MODE_ENTITY)
-            if entity_id:
-                return [
-                    {
-                        "domain": "select",
-                        "service": "select_option",
-                        "data": {"entity_id": entity_id, "option": action.value},
-                    }
-                ]
+            return self._select_calls(CONF_DEYE_PROGRAM_1_MODE_ENTITY, action.value)
 
         if action.action == "deye_prepare_grid_charge_window":
             return []
@@ -119,14 +97,13 @@ class DeyeAdapter(InverterAdapter):
                 return self._select_calls(CONF_DEYE_WORK_MODE_ENTITY, "Export First") or \
                     self._switch_calls(CONF_DEYE_EXPORT_SURPLUS_ENTITY, True) or \
                     self._switch_calls(CONF_DEYE_SOLAR_EXPORT_ENTITY, True)
-            return self._select_calls(CONF_DEYE_WORK_MODE_ENTITY, "Zero Export To Load") or \
+            return self._select_calls(CONF_DEYE_WORK_MODE_ENTITY, "Zero Export To Load", "Zero Export To CT") or \
                 self._switch_calls(CONF_DEYE_EXPORT_SURPLUS_ENTITY, False) or \
                 self._switch_calls(CONF_DEYE_SOLAR_EXPORT_ENTITY, False)
 
         if action.action == "deye_enable_use_timer":
             if bool(action.value):
-                return self._select_calls(CONF_DEYE_TIME_OF_USE_ENTITY, "Week") or \
-                    self._select_calls(CONF_DEYE_TIME_OF_USE_ENTITY, "Enabled") or \
+                return self._select_calls(CONF_DEYE_TIME_OF_USE_ENTITY, "Week", "Enabled", "On") or \
                     self._switch_calls(CONF_DEYE_USE_TIMER_ENTITY, True)
             return self._select_calls(CONF_DEYE_TIME_OF_USE_ENTITY, "Disabled") or \
                 self._switch_calls(CONF_DEYE_USE_TIMER_ENTITY, False)
@@ -175,19 +152,19 @@ class DeyeAdapter(InverterAdapter):
                 6: CONF_DEYE_PROGRAM_6_SOC_ENTITY,
             }
             mode_options = {
-                "grid_charge": "Charge",
-                "export_battery": "Discharge",
-                "export_surplus": "Selling First",
+                "grid_charge": ("Charge", "Grid charge"),
+                "export_battery": ("Discharge", "Selling First"),
+                "export_surplus": ("Selling First", "Discharge"),
             }
             charge_options = {
-                "grid_charge": "Grid charge",
-                "export_battery": "Allow discharge",
-                "export_surplus": "Allow discharge",
+                "grid_charge": ("Grid", "Both", "Generator"),
+                "export_battery": ("Disabled",),
+                "export_surplus": ("Disabled",),
             }
             power_values = {
-                "grid_charge": 100,
-                "export_battery": 100,
-                "export_surplus": 100,
+                "grid_charge": 10000,
+                "export_battery": 10000,
+                "export_surplus": 10000,
             }
             soc_values = {
                 "grid_charge": 90,
@@ -218,49 +195,17 @@ class DeyeAdapter(InverterAdapter):
                         }
                     )
                 if mode_entity:
-                    calls.append(
-                        {
-                            "domain": "select",
-                            "service": "select_option",
-                            "data": {
-                                "entity_id": mode_entity,
-                                "option": mode_options.get(period["mode"], "Selling First"),
-                            },
-                        }
-                    )
+                    mode_call = self._select_entity_call(mode_entity, mode_options.get(period["mode"], ("Selling First",)))
+                    if mode_call:
+                        calls.append(mode_call)
                 if charge_entity:
-                    calls.append(
-                        {
-                            "domain": "select",
-                            "service": "select_option",
-                            "data": {
-                                "entity_id": charge_entity,
-                                "option": charge_options.get(period["mode"], "Allow discharge"),
-                            },
-                        }
-                    )
+                    charge_call = self._select_entity_call(charge_entity, charge_options.get(period["mode"], ("Disabled",)))
+                    if charge_call:
+                        calls.append(charge_call)
                 if power_entity:
-                    calls.append(
-                        {
-                            "domain": "number",
-                            "service": "set_value",
-                            "data": {
-                                "entity_id": power_entity,
-                                "value": power_values.get(period["mode"], 100),
-                            },
-                        }
-                    )
+                    calls.append(self._number_call(power_entity, power_values.get(period["mode"], 10000)))
                 if soc_entity:
-                    calls.append(
-                        {
-                            "domain": "number",
-                            "service": "set_value",
-                            "data": {
-                                "entity_id": soc_entity,
-                                "value": soc_values.get(period["mode"], 20),
-                            },
-                        }
-                    )
+                    calls.append(self._number_call(soc_entity, soc_values.get(period["mode"], 20)))
             return calls
 
         return []
@@ -277,17 +222,62 @@ class DeyeAdapter(InverterAdapter):
             }
         ]
 
-    def _select_calls(self, key: str, option: str) -> list[dict]:
+    def _select_calls(self, key: str, *options: str) -> list[dict]:
         entity_id = self._entity(key)
         if not entity_id:
             return []
-        return [
-            {
+        call = self._select_entity_call(entity_id, options)
+        return [call] if call else []
+
+    def _select_entity_call(self, entity_id: str, options: tuple[str, ...] | list[str]) -> dict | None:
+        state = self.hass.states.get(entity_id)
+        available = state.attributes.get("options", []) if state else []
+        normalized_available = {
+            self._normalize_option(option): option for option in available if isinstance(option, str)
+        }
+        for option in options:
+            matched = normalized_available.get(self._normalize_option(option))
+            if matched:
+                return {
+                    "domain": "select",
+                    "service": "select_option",
+                    "data": {"entity_id": entity_id, "option": matched},
+                }
+        if options:
+            return {
                 "domain": "select",
                 "service": "select_option",
-                "data": {"entity_id": entity_id, "option": option},
+                "data": {"entity_id": entity_id, "option": options[0]},
             }
-        ]
+        return None
+
+    def _number_call(self, entity_id: str, value: float | int) -> dict:
+        state = self.hass.states.get(entity_id)
+        attrs = state.attributes if state else {}
+        try:
+            minimum = float(attrs.get("min"))
+        except (TypeError, ValueError):
+            minimum = None
+        try:
+            maximum = float(attrs.get("max"))
+        except (TypeError, ValueError):
+            maximum = None
+
+        numeric_value = float(value)
+        if minimum is not None:
+            numeric_value = max(numeric_value, minimum)
+        if maximum is not None:
+            numeric_value = min(numeric_value, maximum)
+        if numeric_value.is_integer():
+            numeric_value = int(numeric_value)
+        return {
+            "domain": "number",
+            "service": "set_value",
+            "data": {"entity_id": entity_id, "value": numeric_value},
+        }
+
+    def _normalize_option(self, option: str) -> str:
+        return "".join(char for char in option.lower() if char.isalnum())
 
     def _entity(self, key: str) -> str | None:
         if not key:
