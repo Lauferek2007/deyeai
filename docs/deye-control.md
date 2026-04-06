@@ -11,6 +11,9 @@ Deye/Sunsynk nie ma jednego "uniwersalnego" przełącznika typu:
 
 W praktyce sterowanie robi się kombinacją kilku nastaw:
 
+- `solar_export`
+- `use_timer`
+- `grid_charge_enabled`
 - `load_limit`
 - `battery_max_charge_current`
 - tryby programu czasowego typu `prog1_mode`
@@ -20,6 +23,9 @@ W praktyce sterowanie robi się kombinacją kilku nastaw:
 
 Na podstawie dokumentacji i przykładów społeczności:
 
+- sam slot TOU nie wystarczy, jeśli systemowy eksport jest wyłączony,
+- `use_timer` musi być aktywne, aby programy czasowe sterowały zachowaniem,
+- dla ładowania z sieci trzeba zwykle włączyć `grid_charge_enabled`,
 - `Allow Export` pozwala zasilać odbiory i eksportować do sieci,
 - `Zero Export` ogranicza eksport,
 - `Essentials` ogranicza zasilanie do obwodów po stronie falownika,
@@ -71,6 +77,14 @@ Jeśli w Home Assistant są dostępne encje:
 - `prog3_time`, `prog3_mode`
 
 adapter Deye spróbuje ustawić czas startu i tryb dla tych slotów.
+
+Jeżeli są też dostępne:
+
+- `solar_export`
+- `use_timer`
+- `grid_charge_enabled`
+
+projekt spróbuje je przełączać zgodnie z planem.
 
 To nadal jest wersja ostrożna:
 

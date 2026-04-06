@@ -67,6 +67,13 @@ class DeyeStrategyPlanner:
             should_export_overnight = high_export_window
             actions.append(
                 ControlAction(
+                    action="deye_enable_use_timer",
+                    value=True,
+                    reason="TOU schedules must be enabled before Deye time programs can drive behaviour.",
+                )
+            )
+            actions.append(
+                ControlAction(
                     action="deye_set_target_morning_soc",
                     value=round(target_morning_soc, 1),
                     reason="Tomorrow PV surplus is expected to exceed remaining battery headroom.",
@@ -90,6 +97,13 @@ class DeyeStrategyPlanner:
             if should_export_overnight:
                 actions.append(
                     ControlAction(
+                        action="deye_enable_system_export",
+                        value=True,
+                        reason="Export has to be enabled at system level before battery discharge can be sold to the grid.",
+                    )
+                )
+                actions.append(
+                    ControlAction(
                         action="deye_allow_export_discharge",
                         value=True,
                         reason="Export value is currently better than storing the energy for expected self-consumption.",
@@ -101,6 +115,20 @@ class DeyeStrategyPlanner:
 
         elif low_solar_tomorrow and grid_charge_allowed and cheap_import_now:
             target_morning_soc = max(min_soc + 35, min(max_soc, 55))
+            actions.append(
+                ControlAction(
+                    action="deye_enable_use_timer",
+                    value=True,
+                    reason="Use timer is required for scheduled grid charging windows.",
+                )
+            )
+            actions.append(
+                ControlAction(
+                    action="deye_enable_grid_charge",
+                    value=True,
+                    reason="Grid charging must be enabled at system level before TOU charging can start.",
+                )
+            )
             actions.append(
                 ControlAction(
                     action="deye_force_grid_charge",
@@ -138,6 +166,13 @@ class DeyeStrategyPlanner:
                     action="deye_set_load_limit_mode",
                     value="Zero Export" if export_allowed else "Essentials",
                     reason="Default safe mode while holding the current energy strategy.",
+                )
+            )
+            actions.append(
+                ControlAction(
+                    action="deye_enable_system_export",
+                    value=False,
+                    reason="Disable export when the strategy is to hold energy for self-consumption.",
                 )
             )
             summary_parts.append("hold strategy")

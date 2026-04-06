@@ -94,12 +94,24 @@ class DiscoveryResult:
     solar_forecast_entity: str | None = None
     price_import_entity: str | None = None
     price_export_entity: str | None = None
+    deye_grid_charge_enabled_entity: str | None = None
     deye_load_limit_entity: str | None = None
+    deye_solar_export_entity: str | None = None
+    deye_use_timer_entity: str | None = None
     deye_battery_max_charge_current_entity: str | None = None
     deye_program_1_mode_entity: str | None = None
     deye_program_1_time_entity: str | None = None
+    deye_program_1_charge_entity: str | None = None
+    deye_program_1_power_entity: str | None = None
+    deye_program_1_capacity_entity: str | None = None
     deye_program_2_mode_entity: str | None = None
     deye_program_2_time_entity: str | None = None
+    deye_program_2_charge_entity: str | None = None
+    deye_program_2_power_entity: str | None = None
+    deye_program_2_capacity_entity: str | None = None
     deye_program_3_mode_entity: str | None = None
     deye_program_3_time_entity: str | None = None
+    deye_program_3_charge_entity: str | None = None
+    deye_program_3_power_entity: str | None = None
+    deye_program_3_capacity_entity: str | None = None
     notes: list[str] = field(default_factory=list)
