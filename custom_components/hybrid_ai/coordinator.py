@@ -39,12 +39,13 @@ from .const import (
     CONF_PRICE_IMPORT_ENTITY,
     CONF_SOLAR_FORECAST_ENTITY,
     CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_WEEKLY_LOAD_OFFSETS,
 )
 from .deye_strategy import DeyeStrategyPlanner
 from .discovery import discover_inverter_entities, discovery_as_dict
 from .forecast import SolarForecastProvider
 from .load_forecast import LoadForecaster
-from .models import EnergySnapshot, ForecastBundle
+from .models import EnergySnapshot, ForecastBundle, WeeklyLoadOffset
 from .optimizer import BatteryOptimizer
 from .price_forecast import PriceForecastProvider
 
@@ -61,6 +62,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
             hass,
             self._resolved_value(CONF_LOAD_POWER_ENTITY),
             entry.entry_id,
+            [WeeklyLoadOffset(**item) for item in entry.data.get(CONF_WEEKLY_LOAD_OFFSETS, [])],
         )
         self.solar_forecaster = SolarForecastProvider(
             hass,

@@ -9,6 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
+from .models import WeeklyLoadOffset
+
 STORAGE_VERSION = 1
 STORAGE_KEY_PREFIX = "hybrid_ai_load_profile"
 SLOTS_PER_DAY = 24
@@ -27,10 +29,17 @@ def _empty_counts() -> dict[str, list[int]]:
 class LoadForecaster:
     """Automatic load learner with weekday/hour profiles."""
 
-    def __init__(self, hass: HomeAssistant, load_entity_id: str | None, entry_id: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        load_entity_id: str | None,
+        entry_id: str,
+        weekly_offsets: list[WeeklyLoadOffset] | None = None,
+    ) -> None:
         self._hass = hass
         self._load_entity_id = load_entity_id
         self._entry_id = entry_id
+        self._weekly_offsets = weekly_offsets or []
         self._samples: deque[float] = deque(maxlen=96 * 14)
         self._weekday_profile = _empty_profile()
         self._weekday_counts = _empty_counts()
@@ -88,6 +97,7 @@ class LoadForecaster:
         for hour_offset in range(24):
             target = now + timedelta(hours=hour_offset)
             slot_w, slot_confidence = self._predict_slot(target, recent_w, global_avg_w, current_load_w)
+            slot_w += self._offset_for_target(target)
             daily_kwh += slot_w / 1000
             if target.hour < 6:
                 overnight_kwh += slot_w / 1000
@@ -106,6 +116,7 @@ class LoadForecaster:
             "total_samples": total_samples,
             "slots_with_history": coverage,
             "has_full_week_profile": all(value >= 12 for value in coverage.values()),
+            "configured_offsets": [self._offset_to_dict(offset) for offset in self._weekly_offsets],
             "current_weekday_profile": deepcopy(
                 self._weekday_profile[str(dt_util.now().weekday())]
             ),
@@ -140,6 +151,15 @@ class LoadForecaster:
 
         return max(predicted, 0.0), confidence
 
+    def _offset_for_target(self, target) -> float:
+        total_offset = 0.0
+        for offset in self._weekly_offsets:
+            if target.weekday() != offset.day:
+                continue
+            if offset.start_hour <= target.hour < offset.start_hour + offset.duration_hours:
+                total_offset += offset.power_w
+        return total_offset
+
     def _update_profile(self, value: float) -> None:
         now = dt_util.now()
         day_key = str(now.weekday())
@@ -155,3 +175,12 @@ class LoadForecaster:
         self._weekday_profile[day_key][slot] = round(updated, 3)
         self._weekday_counts[day_key][slot] = count + 1
         self._sample_counter += 1
+
+    def _offset_to_dict(self, offset: WeeklyLoadOffset) -> dict:
+        return {
+            "day": offset.day,
+            "start_hour": offset.start_hour,
+            "duration_hours": offset.duration_hours,
+            "power_w": offset.power_w,
+            "label": offset.label,
+        }

@@ -10,6 +10,7 @@ CONF_GRID_POWER_ENTITY = "grid_power_entity"
 CONF_SOLAR_FORECAST_ENTITY = "solar_forecast_entity"
 CONF_PRICE_IMPORT_ENTITY = "price_import_entity"
 CONF_PRICE_EXPORT_ENTITY = "price_export_entity"
+CONF_WEEKLY_LOAD_OFFSETS = "weekly_load_offsets"
 CONF_DEYE_LOAD_LIMIT_ENTITY = "deye_load_limit_entity"
 CONF_DEYE_BATTERY_MAX_CHARGE_CURRENT_ENTITY = "deye_battery_max_charge_current_entity"
 CONF_DEYE_PROGRAM_1_MODE_ENTITY = "deye_program_1_mode_entity"
@@ -37,6 +38,8 @@ ATTR_ADAPTER_ACTIONS = "adapter_actions"
 ATTR_DISCOVERY = "discovery"
 ATTR_PRICE_CONTEXT = "price_context"
 ATTR_LOAD_PROFILE = "load_profile"
+
+DEFAULT_WEEKLY_LOAD_OFFSETS = []
 
 SERVICE_RUN_OPTIMIZATION = "run_optimization"
 SERVICE_DISCOVER_ENTITIES = "discover_entities"

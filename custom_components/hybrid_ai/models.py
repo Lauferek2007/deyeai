@@ -34,6 +34,15 @@ class PriceBundle:
 
 
 @dataclass(slots=True)
+class WeeklyLoadOffset:
+    day: int
+    start_hour: int
+    duration_hours: int
+    power_w: float
+    label: str = ""
+
+
+@dataclass(slots=True)
 class ControlAction:
     action: str
     value: Any

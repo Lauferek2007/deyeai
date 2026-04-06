@@ -16,6 +16,10 @@ Prognoza zużycia działa automatycznie i uczy się profilu budynku bez ręczneg
 - po restarcie Home Assistanta zachowuje wyuczony profil,
 - łączy profil tygodniowy z ostatnimi próbkami, żeby reagować też na bieżące odchylenia.
 
+Mozna tez dodac reczne tygodniowe offsety jako korekte dla automatyki.
+Przyklad:
+`[{"day": 5, "start_hour": 10, "duration_hours": 5, "power_w": 11000, "label": "EV charging"}]`
+
 Dodatkowo integracja ma tryb autodiscovery:
 
 - automatyczne wykrywanie najpopularniejszych rodzin falowników,
