@@ -77,11 +77,11 @@ def discover_inverter_entities(hass: HomeAssistant) -> DiscoveryResult:
 
     notes = []
     if filled < 4:
-        notes.append("Autodiscovery found only a partial entity set; manual confirmation is recommended.")
+        notes.append("Autowykrywanie znalazlo tylko czesc potrzebnych encji; zalecana jest reczna weryfikacja.")
     if adapter == "generic":
-        notes.append("No popular inverter family matched strongly; using generic entity adapter.")
+        notes.append("Nie znaleziono mocnego dopasowania do popularnej rodziny falownikow; uzywany jest adapter ogolny.")
     if adapter == "deye":
-        notes.append("Deye/Sunsynk style entities detected; load limit and charge-current controls will be preferred.")
+        notes.append("Wykryto styl encji Deye/Sunsynk; preferowane beda sterowanie limitem obciazenia i pradem ladowania.")
 
     return DiscoveryResult(
         adapter=adapter,

@@ -40,14 +40,14 @@ class BatteryOptimizer:
                 ControlAction(
                     action="set_target_morning_soc",
                     value=round(target_morning_soc, 1),
-                    reason="Forecast surplus is higher than remaining storage headroom.",
+                    reason="Prognozowana nadwyzka jest wieksza niz wolne miejsce w magazynie energii.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="allow_overnight_discharge",
                     value=True,
-                    reason=f"Make room for roughly {expected_surplus_kwh:.1f} kWh of forecast surplus.",
+                    reason=f"Zwolnij miejsce na okolo {expected_surplus_kwh:.1f} kWh spodziewanej nadwyzki.",
                 )
             )
             if should_export_overnight:
@@ -55,23 +55,23 @@ class BatteryOptimizer:
                     ControlAction(
                         action="allow_export_discharge",
                         value=True,
-                        reason="Export is allowed and forecast indicates a high solar day tomorrow.",
+                        reason="Eksport jest dozwolony, a prognoza wskazuje na bardzo dobry dzien produkcji PV.",
                     )
                 )
             summary = (
-                f"Reduce battery overnight toward {target_morning_soc:.0f}% SOC. "
-                f"Forecast surplus: {expected_surplus_kwh:.1f} kWh."
+                f"Rozladuj baterie w nocy do okolo {target_morning_soc:.0f}% SOC. "
+                f"Prognozowana nadwyzka: {expected_surplus_kwh:.1f} kWh."
             )
         else:
             actions.append(
                 ControlAction(
                     action="hold_reserve",
                     value=round(max(snapshot.battery_soc, min_soc), 1),
-                    reason="Forecast does not justify proactive overnight discharge.",
+                    reason="Prognoza nie uzasadnia aktywnego rozladowania baterii w nocy.",
                 )
             )
             summary = (
-                f"Keep reserve. Forecast surplus {expected_surplus_kwh:.1f} kWh does not justify aggressive discharge."
+                f"Zachowaj rezerwe. Nadwyzka {expected_surplus_kwh:.1f} kWh nie uzasadnia agresywnego rozladowania."
             )
 
         return OptimizationResult(

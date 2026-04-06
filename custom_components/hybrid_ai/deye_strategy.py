@@ -69,42 +69,42 @@ class DeyeStrategyPlanner:
                 ControlAction(
                     action="deye_enable_use_timer",
                     value=True,
-                    reason="TOU schedules must be enabled before Deye time programs can drive behaviour.",
+                    reason="Harmonogram TOU musi byc wlaczony, zanim programy czasowe Deye zaczna sterowac praca falownika.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="deye_set_target_morning_soc",
                     value=round(target_morning_soc, 1),
-                    reason="Tomorrow PV surplus is expected to exceed remaining battery headroom.",
+                    reason="Jutrzejsza nadwyzka PV prawdopodobnie przekroczy wolne miejsce pozostale w baterii.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="deye_set_battery_charge_current",
                     value=1 if should_export_overnight else 5,
-                    reason="Low charge current leaves room for early high-value export or next-morning PV capture.",
+                    reason="Niski prad ladowania zostawia miejsce na poranny uzysk PV albo oplacalny eksport.",
                 )
             )
-            summary_parts.append(f"tomorrow surplus {expected_surplus_kwh:.1f} kWh")
+            summary_parts.append(f"jutrzejsza nadwyzka {expected_surplus_kwh:.1f} kWh")
             if should_export_overnight:
                 actions.append(
                     ControlAction(
                         action="deye_enable_system_export",
                         value=True,
-                        reason="Export has to be enabled at system level before battery discharge can be sold to the grid.",
+                        reason="Eksport musi byc wlaczony na poziomie systemowym, zanim energia z baterii bedzie mogla trafiac do sieci.",
                     )
                 )
                 actions.append(
                     ControlAction(
                         action="deye_allow_export_discharge",
                         value=True,
-                        reason="Export value is currently better than storing the energy for expected self-consumption.",
+                        reason="Obecna cena sprzedazy jest korzystniejsza niz trzymanie tej energii na przewidywana autokonsumpcje.",
                     )
                 )
-                summary_parts.append("night export enabled")
+                summary_parts.append("wlaczono nocny eksport")
             else:
-                summary_parts.append("night discharge limited to house load")
+                summary_parts.append("nocne rozladowanie tylko na potrzeby domu")
 
         elif low_solar_tomorrow and grid_charge_allowed and cheap_import_now:
             target_morning_soc = max(min_soc + 35, min(max_soc, 55))
@@ -112,38 +112,38 @@ class DeyeStrategyPlanner:
                 ControlAction(
                     action="deye_enable_use_timer",
                     value=True,
-                    reason="Use timer is required for scheduled grid charging windows.",
+                    reason="Timer TOU jest wymagany do zaplanowanych okien ladowania z sieci.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="deye_enable_grid_charge",
                     value=True,
-                    reason="Grid charging must be enabled at system level before TOU charging can start.",
+                    reason="Ladowanie z sieci musi byc wlaczone systemowo, zanim rozpocznie sie ladowanie w oknach TOU.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="deye_force_grid_charge",
                     value=True,
-                    reason="Low PV forecast tomorrow and current import prices are cheap relative to expected later consumption.",
+                    reason="Jutrzejsza prognoza PV jest slaba, a obecna cena zakupu jest korzystna wobec pozniejszego zuzycia.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="deye_set_target_morning_soc",
                     value=round(target_morning_soc, 1),
-                    reason="Prepare stored energy for a weak-solar day.",
+                    reason="Przygotuj zapas energii na dzien ze slaba produkcja PV.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="deye_prepare_grid_charge_window",
                     value=True,
-                    reason="Prepare program windows for scheduled grid charging.",
+                    reason="Przygotuj okna programow dla zaplanowanego ladowania z sieci.",
                 )
             )
-            summary_parts.append("overnight grid charge planned")
+            summary_parts.append("zaplanowano nocne ladowanie z sieci")
 
         else:
             target_morning_soc = max(min_soc, min(snapshot.battery_soc, max_soc))
@@ -151,24 +151,24 @@ class DeyeStrategyPlanner:
                 ControlAction(
                     action="deye_hold_strategy",
                     value=round(target_morning_soc, 1),
-                    reason="No strong economic or forecast signal justifies aggressive battery action.",
+                    reason="Brak mocnego sygnalu ekonomicznego lub prognozowego, ktory uzasadnialby agresywna prace baterii.",
                 )
             )
             actions.append(
                 ControlAction(
                     action="deye_enable_system_export",
                     value=False,
-                    reason="Disable export when the strategy is to hold energy for self-consumption.",
+                    reason="Wylacz eksport, gdy strategia zaklada zachowanie energii na autokonsumpcje.",
                 )
             )
-            summary_parts.append("hold strategy")
+            summary_parts.append("strategia zachowania rezerwy")
 
         if forecast.solar_kwh_next_24h > forecast.load_kwh_next_24h and export_allowed:
             actions.append(
                 ControlAction(
                     action="deye_limit_early_pv_battery_charging",
                     value=True,
-                    reason="If morning export value is high, battery charging can be temporarily limited to monetize surplus first.",
+                    reason="Jesli poranny eksport jest oplacalny, ladowanie baterii mozna chwilowo ograniczyc, aby najpierw sprzedac nadwyzke.",
                 )
             )
         if tou_periods:
@@ -185,13 +185,13 @@ class DeyeStrategyPlanner:
                         }
                         for period in tou_periods
                     ],
-                    reason="Apply compressed hourly schedule to available Deye TOU program slots.",
+                    reason="Zastosuj skompresowany plan godzinowy do dostepnych slotow TOU w Deye.",
                 )
             )
 
         summary = (
-            f"Deye plan: {', '.join(summary_parts)}. "
-            f"Avg import {prices.avg_import_price:.3f}, max export {prices.highest_export_price:.3f}."
+            f"Plan Deye: {', '.join(summary_parts)}. "
+            f"Sredni zakup {prices.avg_import_price:.3f}, najlepsza sprzedaz {prices.highest_export_price:.3f}."
         )
 
         return OptimizationResult(
@@ -238,19 +238,19 @@ class DeyeStrategyPlanner:
 
             if pv_kwh > load_kwh * 1.25 and export_allowed and export_price >= max(highest_export * 0.85, avg_import - battery_cycle_cost):
                 mode = "export_surplus"
-                notes = "High PV and strong export value."
+                notes = "Wysokie PV i korzystna cena eksportu."
             elif slot_start.hour < 6 and grid_charge_allowed and import_price > 0 and import_price <= max(cheapest_import * 1.1, avg_import * 0.7):
                 mode = "grid_charge"
-                notes = "Cheap import window."
+                notes = "Tanie okno zakupu energii."
             elif slot_start.hour < 8 and forecast.solar_kwh_next_24h > forecast.load_kwh_next_24h:
                 mode = "preserve_headroom"
-                notes = "Hold battery headroom before solar ramp."
+                notes = "Zachowaj miejsce w baterii przed porannym wzrostem PV."
             elif slot_start.hour >= 18 and export_allowed and export_price >= avg_import:
                 mode = "export_battery"
-                notes = "Evening export window."
+                notes = "Wieczorne okno eksportu."
             else:
                 mode = "self_use"
-                notes = "Default self-consumption mode."
+                notes = "Domyslny tryb autokonsumpcji."
 
             schedule.append(
                 HourPlan(

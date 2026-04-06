@@ -6,7 +6,13 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 
-from .const import DATA_COORDINATORS, DOMAIN, SERVICE_DISCOVER_ENTITIES, SERVICE_RUN_OPTIMIZATION
+from .const import (
+    CONF_AUTO_DISCOVERY,
+    DATA_COORDINATORS,
+    DOMAIN,
+    SERVICE_DISCOVER_ENTITIES,
+    SERVICE_RUN_OPTIMIZATION,
+)
 from .coordinator import HybridAiCoordinator
 from .discovery import discover_inverter_entities, discovery_as_dict
 
@@ -63,6 +69,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async def handle_discover_entities(call: ServiceCall) -> None:
             result = discovery_as_dict(discover_inverter_entities(hass))
             hass.states.async_set(f"{DOMAIN}.last_discovery", result.get("adapter", "generic"), result)
+            reload_entries = [
+                stored.entry.entry_id
+                for stored in list(hass.data.get(DOMAIN, {}).get(DATA_COORDINATORS, {}).values())
+                if stored.config.get(CONF_AUTO_DISCOVERY, True)
+            ]
+            for entry_id in reload_entries:
+                await hass.config_entries.async_reload(entry_id)
 
         hass.services.async_register(DOMAIN, SERVICE_DISCOVER_ENTITIES, handle_discover_entities)
 
