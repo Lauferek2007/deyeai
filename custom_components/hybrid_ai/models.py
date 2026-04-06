@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any
 
 
@@ -50,6 +51,17 @@ class ControlAction:
 
 
 @dataclass(slots=True)
+class HourPlan:
+    start: datetime
+    mode: str
+    expected_load_kwh: float
+    expected_pv_kwh: float
+    import_price: float
+    export_price: float
+    notes: str = ""
+
+
+@dataclass(slots=True)
 class OptimizationResult:
     target_morning_soc: float
     expected_surplus_kwh: float
@@ -57,6 +69,7 @@ class OptimizationResult:
     should_export_overnight: bool
     summary: str
     actions: list[ControlAction] = field(default_factory=list)
+    hourly_schedule: list[HourPlan] = field(default_factory=list)
 
 
 @dataclass(slots=True)

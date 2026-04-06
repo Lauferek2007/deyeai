@@ -12,6 +12,7 @@ from .const import (
     ATTR_EXPECTED_SURPLUS_KWH,
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
+    ATTR_HOURLY_SCHEDULE,
     ATTR_LOAD_PROFILE,
     ATTR_PLAN_SUMMARY,
     ATTR_PRICE_CONTEXT,
@@ -67,4 +68,6 @@ class HybridAiDiagnosticSensor(CoordinatorEntity[HybridAiCoordinator], SensorEnt
             "discovery": self.coordinator.data.get(ATTR_DISCOVERY),
             "price_context": self.coordinator.data.get(ATTR_PRICE_CONTEXT),
             "load_profile": self.coordinator.data.get(ATTR_LOAD_PROFILE),
+            "hourly_schedule": self.coordinator.data.get(ATTR_HOURLY_SCHEDULE),
+            "hourly_load": self.coordinator.data.get("hourly_load"),
         }

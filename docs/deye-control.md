@@ -42,6 +42,20 @@ Dla Deye adapter ma tłumaczyć scenariusz na:
 3. nocne ładowanie z sieci przy taniej energii,
 4. poranne przygotowanie miejsca na PV.
 
+## Harmonogram 24h
+
+Aktualna wersja projektu buduje też diagnostyczny plan godzinowy na najbliższe 24 godziny.
+
+Tryby slotów:
+
+- `grid_charge`
+- `self_use`
+- `preserve_headroom`
+- `export_surplus`
+- `export_battery`
+
+Ten harmonogram nie ustawia jeszcze pełnego TOU schedule w każdym modelu Deye, ale daje wspólny plan decyzyjny, który będzie podstawą pod kolejną iterację wykonawczą.
+
 ## Ograniczenia
 
 Nadal trzeba zweryfikować mapowanie sterowania na konkretnych modelach:

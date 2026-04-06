@@ -35,7 +35,8 @@ Obecny kierunek sterowania:
 - `load_limit` do wyboru trybu `Essentials`, `Zero Export`, `Allow Export`,
 - `battery_max_charge_current` do ograniczania lub otwierania ładowania,
 - `prog1_mode` do nocnego ładowania z sieci przy słabej prognozie PV i taniej energii,
-- logika ekonomiczna oparta o ceny importu i eksportu.
+- logika ekonomiczna oparta o ceny importu i eksportu,
+- diagnostyczny harmonogram 24h pokazujący plan `grid_charge`, `self_use`, `preserve_headroom`, `export_surplus` i `export_battery`.
 
 To jest właściwy kształt produktu jako `custom integration`, nie tylko add-on. Add-on może pojawić się później do cięższych obliczeń, ale rdzeń musi żyć w integracji HA.
 

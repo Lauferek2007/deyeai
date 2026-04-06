@@ -106,6 +106,35 @@ class LoadForecaster:
         confidence = sum(confidence_components) / len(confidence_components)
         return daily_kwh, overnight_kwh, min(max(confidence, 0.2), 0.93)
 
+    def forecast_hourly_load(self, current_load_w: float) -> list[dict]:
+        if not self._samples:
+            now = dt_util.now()
+            return [
+                {
+                    "start": now + timedelta(hours=hour_offset),
+                    "load_w": current_load_w,
+                    "confidence": 0.2,
+                }
+                for hour_offset in range(24)
+            ]
+
+        now = dt_util.now()
+        recent_w = sum(list(self._samples)[-8:]) / min(len(self._samples), 8)
+        global_avg_w = sum(self._samples) / len(self._samples)
+        output: list[dict] = []
+        for hour_offset in range(24):
+            target = now + timedelta(hours=hour_offset)
+            slot_w, slot_confidence = self._predict_slot(target, recent_w, global_avg_w, current_load_w)
+            slot_w += self._offset_for_target(target)
+            output.append(
+                {
+                    "start": target,
+                    "load_w": max(slot_w, 0.0),
+                    "confidence": slot_confidence,
+                }
+            )
+        return output
+
     def get_profile_summary(self) -> dict:
         total_samples = sum(sum(day_counts) for day_counts in self._weekday_counts.values())
         coverage = {

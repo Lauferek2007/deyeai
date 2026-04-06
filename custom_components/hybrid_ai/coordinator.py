@@ -15,6 +15,7 @@ from .const import (
     ATTR_EXPECTED_SURPLUS_KWH,
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
+    ATTR_HOURLY_SCHEDULE,
     ATTR_LOAD_PROFILE,
     ATTR_PLAN_SUMMARY,
     ATTR_PRICE_CONTEXT,
@@ -90,6 +91,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
         snapshot = self._read_snapshot()
         current_load_w = self.load_forecaster.ingest_current_sample()
         await self.load_forecaster.async_persist()
+        hourly_load = self.load_forecaster.forecast_hourly_load(current_load_w)
         solar_kwh, solar_meta = self.solar_forecaster.get_next_24h_kwh()
         load_kwh, overnight_kwh, forecast_confidence = self.load_forecaster.forecast_next_24h_kwh(
             current_load_w
@@ -109,6 +111,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 snapshot,
                 forecast,
                 prices,
+                hourly_load,
                 min_soc=float(self.entry.data[CONF_MIN_SOC]),
                 max_soc=float(self.entry.data[CONF_MAX_SOC]),
                 export_allowed=bool(self.entry.data[CONF_EXPORT_ALLOWED]),
@@ -147,6 +150,26 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 "sources": prices.source_details,
             },
             ATTR_LOAD_PROFILE: self.load_forecaster.get_profile_summary(),
+            "hourly_load": [
+                {
+                    "start": slot["start"].isoformat(),
+                    "load_w": round(slot["load_w"], 2),
+                    "confidence": round(slot["confidence"], 3),
+                }
+                for slot in hourly_load
+            ],
+            ATTR_HOURLY_SCHEDULE: [
+                {
+                    "start": slot.start.isoformat(),
+                    "mode": slot.mode,
+                    "expected_load_kwh": slot.expected_load_kwh,
+                    "expected_pv_kwh": slot.expected_pv_kwh,
+                    "import_price": slot.import_price,
+                    "export_price": slot.export_price,
+                    "notes": slot.notes,
+                }
+                for slot in result.hourly_schedule
+            ],
             "snapshot": asdict(snapshot),
             ATTR_DISCOVERY: discovery_as_dict(self.discovery),
         }

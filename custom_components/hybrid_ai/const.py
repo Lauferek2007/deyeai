@@ -38,6 +38,7 @@ ATTR_ADAPTER_ACTIONS = "adapter_actions"
 ATTR_DISCOVERY = "discovery"
 ATTR_PRICE_CONTEXT = "price_context"
 ATTR_LOAD_PROFILE = "load_profile"
+ATTR_HOURLY_SCHEDULE = "hourly_schedule"
 
 DEFAULT_WEEKLY_LOAD_OFFSETS = []
 
