@@ -337,7 +337,10 @@ def _pick_best_price_entity(states: list[State], adapter: str, field: str) -> st
             isinstance(attrs.get(key), list) and attrs.get(key)
             for key in ("raw_today", "today", "raw_tomorrow", "tomorrow", "prices", "rates")
         )
-        has_price_unit = "/kwh" in unit or "/mwh" in unit
+        has_price_unit = (
+            ("/kwh" in unit or "/mwh" in unit)
+            and any(currency in unit for currency in ("pln", "eur", "usd", "nok", "sek", "dkk", "czk", "gbp"))
+        )
         has_price_keyword = any(keyword in haystack for keyword in ("price", "spot", "tariff", "nordpool"))
         if not has_hourly_prices and not has_price_unit and not has_price_keyword:
             continue
