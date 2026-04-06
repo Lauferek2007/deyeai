@@ -12,6 +12,7 @@ from .discovery import discover_inverter_entities, discovery_as_dict
 
 PLATFORMS = ["sensor"]
 FRONTEND_URL = f"/{DOMAIN}-static"
+LEGACY_FRONTEND_URL = f"/api/{DOMAIN}/static"
 FRONTEND_PATH = Path(__file__).parent / "frontend"
 
 
@@ -29,7 +30,10 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
         return
 
     await hass.http.async_register_static_paths(
-        [StaticPathConfig(FRONTEND_URL, str(FRONTEND_PATH), False)]
+        [
+            StaticPathConfig(FRONTEND_URL, str(FRONTEND_PATH), False),
+            StaticPathConfig(LEGACY_FRONTEND_URL, str(FRONTEND_PATH), False),
+        ]
     )
     domain_data["frontend_registered"] = True
 

@@ -1,7 +1,8 @@
 # Hybrid AI Lovelace Card
 
-Integracja wystawia własny frontend pod adresem:
+Integracja wystawia frontend karty pod dwoma adresami:
 
+- `/api/hybrid_ai/static/hybrid-ai-card.js`
 - `/hybrid_ai-static/hybrid-ai-card.js`
 
 ## Dodanie zasobu
@@ -10,8 +11,11 @@ W `Home Assistant`:
 
 1. `Ustawienia -> Dashboardy -> Zasoby`
 2. dodaj resource:
-   - URL: `/hybrid_ai-static/hybrid-ai-card.js`
+   - URL: `/api/hybrid_ai/static/hybrid-ai-card.js`
    - type: `JavaScript Module`
+
+Nowy alias `/hybrid_ai-static/hybrid-ai-card.js` tez dziala, ale stary adres jest
+bezpieczniejszy dla juz zainstalowanych dashboardow.
 
 ## Dodanie karty
 
@@ -22,7 +26,7 @@ type: custom:hybrid-ai-card
 title: Hybrid AI
 ```
 
-Przykład z pełniejszymi ustawieniami:
+Przyklad z pelniejszymi ustawieniami:
 
 ```yaml
 type: custom:hybrid-ai-card
@@ -34,7 +38,7 @@ show_price_context: true
 compact: false
 ```
 
-Jeśli karta nie znajdzie głównej encji automatycznie, można podać ją ręcznie:
+Jesli karta nie znajdzie glownej encji automatycznie, mozna podac ja recznie:
 
 ```yaml
 type: custom:hybrid-ai-card
@@ -44,14 +48,14 @@ title: Hybrid AI
 
 ## Co pokazuje karta
 
-- bieżące podsumowanie planu,
+- biezace podsumowanie planu,
 - adapter i stan `dry_run/write mode`,
 - aktywny tryb z planu godzinowego,
-- najbliższy slot TOU,
+- najblizszy slot TOU,
 - forecast PV, load i surplus,
 - docelowy poranny `SOC`,
 - forecast confidence,
 - kontekst cenowy,
 - akcje adaptera,
-- podgląd planu godzinowego,
+- podglad planu godzinowego,
 - przycisk `Przelicz plan`.
