@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     ATTR_DISCOVERY,
     ATTR_EXPECTED_SURPLUS_KWH,
+    ATTR_FORECAST_DETAILS,
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
     ATTR_HOURLY_SCHEDULE,
@@ -72,6 +73,7 @@ class HybridAiDiagnosticSensor(CoordinatorEntity[HybridAiCoordinator], SensorEnt
         base.update(
             {
                 "forecast_confidence": self.coordinator.data.get("forecast_confidence"),
+                "forecast_details": self.coordinator.data.get(ATTR_FORECAST_DETAILS),
                 "forecast_solar_kwh": self.coordinator.data.get(ATTR_FORECAST_SOLAR_KWH),
                 "forecast_load_kwh": self.coordinator.data.get(ATTR_FORECAST_LOAD_KWH),
                 "expected_surplus_kwh": self.coordinator.data.get(ATTR_EXPECTED_SURPLUS_KWH),

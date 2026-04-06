@@ -69,6 +69,7 @@ def discover_inverter_entities(hass: HomeAssistant) -> DiscoveryResult:
         field: _pick_best_entity(states, patterns, adapter)
         for field, patterns in ENTITY_PATTERNS.items()
     }
+    candidates["weather_entity"] = _pick_best_weather_entity(states)
 
     confidence = adapter_confidence
     filled = sum(1 for value in candidates.values() if value)
@@ -91,6 +92,7 @@ def discover_inverter_entities(hass: HomeAssistant) -> DiscoveryResult:
         pv_power_entity=candidates["pv_power_entity"],
         grid_power_entity=candidates["grid_power_entity"],
         solar_forecast_entity=candidates["solar_forecast_entity"],
+        weather_entity=candidates["weather_entity"],
         price_import_entity=candidates["price_import_entity"],
         price_export_entity=candidates["price_export_entity"],
         deye_work_mode_entity=candidates["deye_work_mode_entity"],
@@ -200,3 +202,20 @@ def _pick_best_entity(states: list[State], patterns: list[str], adapter: str) ->
 def _state_haystack(state: State) -> str:
     friendly = str(state.attributes.get("friendly_name", ""))
     return f"{state.entity_id} {friendly}".lower()
+
+
+def _pick_best_weather_entity(states: list[State]) -> str | None:
+    weather_entities = [
+        state.entity_id
+        for state in states
+        if state.entity_id.startswith("weather.")
+    ]
+    if not weather_entities:
+        return None
+
+    preferred = [
+        entity_id
+        for entity_id in weather_entities
+        if "forecast" in entity_id or "dom" in entity_id or "home" in entity_id
+    ]
+    return preferred[0] if preferred else weather_entities[0]

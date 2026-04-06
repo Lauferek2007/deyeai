@@ -92,6 +92,7 @@ class DiscoveryResult:
     pv_power_entity: str | None = None
     grid_power_entity: str | None = None
     solar_forecast_entity: str | None = None
+    weather_entity: str | None = None
     price_import_entity: str | None = None
     price_export_entity: str | None = None
     deye_work_mode_entity: str | None = None

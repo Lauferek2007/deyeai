@@ -13,6 +13,7 @@ from .const import (
     ATTR_ADAPTER_ACTIONS,
     ATTR_DISCOVERY,
     ATTR_EXPECTED_SURPLUS_KWH,
+    ATTR_FORECAST_DETAILS,
     ATTR_FORECAST_LOAD_KWH,
     ATTR_FORECAST_SOLAR_KWH,
     ATTR_HOURLY_SCHEDULE,
@@ -67,6 +68,7 @@ from .const import (
     CONF_GRID_CHARGE_ALLOWED,
     CONF_GRID_POWER_ENTITY,
     CONF_LOAD_POWER_ENTITY,
+    CONF_MANUAL_MAX_DAILY_PV_KWH,
     CONF_MAX_SOC,
     CONF_MIN_SOC,
     CONF_PV_POWER_ENTITY,
@@ -74,6 +76,7 @@ from .const import (
     CONF_PRICE_IMPORT_ENTITY,
     CONF_SOLAR_FORECAST_ENTITY,
     CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_WEATHER_ENTITY,
     CONF_WEEKLY_LOAD_OFFSETS,
 )
 from .deye_strategy import DeyeStrategyPlanner
@@ -104,6 +107,8 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
         self.solar_forecaster = SolarForecastProvider(
             hass,
             self._resolved_value(CONF_SOLAR_FORECAST_ENTITY),
+            self._resolved_value(CONF_WEATHER_ENTITY),
+            float(self.config.get(CONF_MANUAL_MAX_DAILY_PV_KWH, 0.0)),
         )
         self.price_forecaster = PriceForecastProvider(
             hass,
@@ -129,7 +134,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
         current_load_w = self.load_forecaster.ingest_current_sample()
         await self.load_forecaster.async_persist()
         hourly_load = self.load_forecaster.forecast_hourly_load(current_load_w)
-        solar_kwh, solar_meta = self.solar_forecaster.get_next_24h_kwh()
+        solar_kwh, solar_meta = await self.solar_forecaster.get_next_24h_kwh()
         load_kwh, overnight_kwh, forecast_confidence = self.load_forecaster.forecast_next_24h_kwh(
             current_load_w
         )
@@ -179,6 +184,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
             "adapter": self.adapter.name,
             "dry_run": not bool(config[CONF_ENABLE_WRITE_MODE]),
             "forecast_confidence": round(forecast.confidence, 2),
+            ATTR_FORECAST_DETAILS: forecast.source_details,
             "settings": {
                 "auto_discovery": bool(config.get(CONF_AUTO_DISCOVERY, True)),
                 "min_soc": float(config[CONF_MIN_SOC]),
@@ -188,6 +194,11 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 "enable_write_mode": bool(config[CONF_ENABLE_WRITE_MODE]),
                 "update_interval_minutes": int(config[CONF_UPDATE_INTERVAL_MINUTES]),
                 "battery_cycle_cost": float(config[CONF_BATTERY_CYCLE_COST]),
+                "manual_max_daily_pv_kwh": float(
+                    config.get(CONF_MANUAL_MAX_DAILY_PV_KWH, 0.0)
+                ),
+                "weather_entity": self._resolved_value(CONF_WEATHER_ENTITY),
+                "solar_forecast_entity": self._resolved_value(CONF_SOLAR_FORECAST_ENTITY),
             },
             ATTR_PRICE_CONTEXT: {
                 "avg_import_price": round(prices.avg_import_price, 4),
@@ -250,6 +261,7 @@ class HybridAiCoordinator(DataUpdateCoordinator[dict]):
                 pv_power_entity=self.config.get(CONF_PV_POWER_ENTITY) or None,
                 grid_power_entity=self.config.get(CONF_GRID_POWER_ENTITY) or None,
                 solar_forecast_entity=self.config.get(CONF_SOLAR_FORECAST_ENTITY) or None,
+                weather_entity=self.config.get(CONF_WEATHER_ENTITY) or None,
                 price_import_entity=self.config.get(CONF_PRICE_IMPORT_ENTITY) or None,
                 price_export_entity=self.config.get(CONF_PRICE_EXPORT_ENTITY) or None,
                 deye_work_mode_entity=self.config.get(CONF_DEYE_WORK_MODE_ENTITY) or None,
