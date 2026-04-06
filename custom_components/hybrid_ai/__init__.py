@@ -11,7 +11,7 @@ from .coordinator import HybridAiCoordinator
 from .discovery import discover_inverter_entities, discovery_as_dict
 
 PLATFORMS = ["sensor"]
-FRONTEND_URL = f"/api/{DOMAIN}/static"
+FRONTEND_URL = f"/{DOMAIN}-static"
 FRONTEND_PATH = Path(__file__).parent / "frontend"
 
 

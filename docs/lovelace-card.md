@@ -2,7 +2,7 @@
 
 Integracja wystawia własny frontend pod adresem:
 
-- `/api/hybrid_ai/static/hybrid-ai-card.js`
+- `/hybrid_ai-static/hybrid-ai-card.js`
 
 ## Dodanie zasobu
 
@@ -10,7 +10,7 @@ W `Home Assistant`:
 
 1. `Ustawienia -> Dashboardy -> Zasoby`
 2. dodaj resource:
-   - URL: `/api/hybrid_ai/static/hybrid-ai-card.js`
+   - URL: `/hybrid_ai-static/hybrid-ai-card.js`
    - type: `JavaScript Module`
 
 ## Dodanie karty
