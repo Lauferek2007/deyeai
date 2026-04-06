@@ -89,6 +89,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class HybridAiCoordinator(DataUpdateCoordinator[dict]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+        self.hass = hass
         self.entry = entry
         self.optimizer = BatteryOptimizer()
         self.deye_strategy = DeyeStrategyPlanner()
